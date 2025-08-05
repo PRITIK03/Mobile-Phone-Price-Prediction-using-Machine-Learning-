@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phone Recommendation System</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to bottom right, #4caf50, #2c3e50);
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background-color: #ffffff20;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            color: #ffeb3b;
+            text-shadow: 2px 2px #00000080;
+        }
+
+        form {
+            margin-top: 20px;
+        }
+
+        label {
+            font-size: 1rem;
+            display: block;
+            margin-bottom: 5px;
+            text-align: left;
+            color: #ffffffcc;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        input[type="number"] {
+            background-color: #ffffff90;
+        }
+
+        input[type="text"] {
+            background-color: #ffffff90;
+        }
+
+        button {
+            background-color: #ff5722;
+            border: none;
+            padding: 10px 20px;
+            color: #fff;
+            font-size: 1rem;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #e64a19;
+        }
+
+        .result {
+            margin-top: 20px;
+            background-color: #ffffff30;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .result h2 {
+            margin-bottom: 10px;
+            color: #ffeb3b;
+        }
+
+        .result p {
+            margin: 5px 0;
+            font-size: 1.1rem;
+            text-align: left;
+        }
+
+        footer {
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: #ffffffa0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Phone Recommendation System</h1>
+        <!-- Form to get input from the user -->
+        <form action="/" method="post">
+            <label for="battery_size">Battery Size (mAh):</label>
+            <input type="number" id="battery_size" name="battery_size" required>
+
+            <label for="brand_name">Brand Name:</label>
+            <input type="text" id="brand_name" name="brand_name" required>
+
+            <label for="memory_size">Memory Size (GB):</label>
+            <input type="number" id="memory_size" name="memory_size" required>
+
+            <button type="submit">Get Recommendation</button>
+        </form>
+
+        {% if result %}
+        <!-- Display the result after the form is submitted -->
+        <div class="result">
+            <h2>Recommended Phone Details</h2>
+            <p><strong>Model Name:</strong> {{ result['model_name'] }}</p>
+            <p><strong>Lowest Price:</strong> ₹{{ result['lowest_price'] }}</p>
+            <p><strong>Highest Price:</strong> ₹{{ result['highest_price'] }}</p>
+            <p><strong>Release Date:</strong> {{ result['release_date'] }}</p>
+            <p><strong>Screen Size (inches):</strong> {{ result['screen_size'] }}</p>
+        </div>
+        {% endif %}
+
+        <footer>
+            © 2024 Phone Recommendation System. All rights reserved.
+        </footer>
+    </div>
+</body>
+</html>
