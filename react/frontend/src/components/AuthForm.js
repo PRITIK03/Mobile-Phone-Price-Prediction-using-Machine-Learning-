@@ -1,4 +1,9 @@
 import React, { useState } from 'react';
+import Box from '@mui/material/Box';
+import TextField from '@mui/material/TextField';
+import Button from '@mui/material/Button';
+import Typography from '@mui/material/Typography';
+import Alert from '@mui/material/Alert';
 
 function AuthForm({ mode = 'login', onAuthSuccess }) {
   const [username, setUsername] = useState('');
@@ -35,34 +40,31 @@ function AuthForm({ mode = 'login', onAuthSuccess }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ maxWidth: 320, margin: '2rem auto', padding: 24, border: '1px solid #ccc', borderRadius: 8 }}>
-      <h2 style={{ textAlign: 'center' }}>{mode === 'login' ? 'Login' : 'Register'}</h2>
-      <div style={{ marginBottom: 12 }}>
-        <input
-          type="text"
-          placeholder="Username"
-          value={username}
-          onChange={e => setUsername(e.target.value)}
-          required
-          style={{ width: '100%', padding: 8 }}
-        />
-      </div>
-      <div style={{ marginBottom: 12 }}>
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          required
-          style={{ width: '100%', padding: 8 }}
-        />
-      </div>
-      <button type="submit" style={{ width: '100%', padding: 10, background: '#1976d2', color: '#fff', border: 'none', borderRadius: 4 }}>
+    <Box component="form" onSubmit={handleSubmit} sx={{ maxWidth: 360, mx: 'auto', mt: 6, p: 3, border: '1px solid #eee', borderRadius: 2, boxShadow: 1 }}>
+      <Typography variant="h5" align="center" gutterBottom>{mode === 'login' ? 'Login' : 'Register'}</Typography>
+      <TextField
+        label="Username"
+        value={username}
+        onChange={e => setUsername(e.target.value)}
+        required
+        fullWidth
+        margin="normal"
+      />
+      <TextField
+        label="Password"
+        type="password"
+        value={password}
+        onChange={e => setPassword(e.target.value)}
+        required
+        fullWidth
+        margin="normal"
+      />
+      <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
         {mode === 'login' ? 'Login' : 'Register'}
-      </button>
-      {error && <div style={{ color: 'red', marginTop: 10 }}>{error}</div>}
-      {message && <div style={{ color: 'green', marginTop: 10 }}>{message}</div>}
-    </form>
+      </Button>
+      {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+      {message && <Alert severity="success" sx={{ mt: 2 }}>{message}</Alert>}
+    </Box>
   );
 }
 
