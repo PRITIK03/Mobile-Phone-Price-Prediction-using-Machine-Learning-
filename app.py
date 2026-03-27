@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS
 import numpy as np
 import pickle
 from datetime import datetime
@@ -13,7 +14,48 @@ with open("models/classifier.pkl", "rb") as f:
 with open("models/label_encoder.pkl", "rb") as f:
     label_encoder = pickle.load(f)
 
+
 app = Flask(__name__)
+CORS(app)
+@app.route("/api/predict", methods=["POST"])
+def api_predict():
+    data = request.get_json()
+    try:
+        battery_size = float(data["battery_size"])
+        brand_name = data["brand_name"]
+        memory_size = float(data["memory_size"])
+    except (KeyError, ValueError, TypeError):
+        return jsonify({"error": "Invalid input."}), 400
+
+    # Encode brand_name
+    try:
+        brand_name_encoded = label_encoder.transform([brand_name])[0]
+    except ValueError:
+        return jsonify({"error": "Brand name not recognized!"}), 400
+
+    X_input = np.array([[battery_size, brand_name_encoded, memory_size]])
+
+    try:
+        model_name_encoded = classifier.predict(X_input)[0]
+        model_name = label_encoder.inverse_transform([model_name_encoded])[0]
+    except Exception:
+        model_name = "Unknown (unseen in training data)"
+
+    y_pred = regressor.predict(X_input)
+    lowest_price = y_pred[0][0]
+    highest_price = y_pred[0][1]
+    release_date = y_pred[0][2]
+    screen_size = y_pred[0][3]
+    release_date = datetime.utcfromtimestamp(release_date).strftime('%Y-%m-%d')
+
+    result = {
+        "model_name": model_name,
+        "lowest_price": round(lowest_price, 2),
+        "highest_price": round(highest_price, 2),
+        "release_date": release_date,
+        "screen_size": round(screen_size, 2)
+    }
+    return jsonify({"prediction": result})
 
 @app.route("/", methods=["GET", "POST"])
 def index():
