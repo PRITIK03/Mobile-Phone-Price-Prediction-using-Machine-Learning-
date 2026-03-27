@@ -1,8 +1,12 @@
+
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 import numpy as np
 import pickle
 from datetime import datetime
+from flask_sqlalchemy import SQLAlchemy
+from flask_bcrypt import Bcrypt
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 
 # Load the trained models and label encoder
 with open("models/regressor.pkl", "rb") as f:
@@ -15,8 +19,55 @@ with open("models/label_encoder.pkl", "rb") as f:
     label_encoder = pickle.load(f)
 
 
+
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['JWT_SECRET_KEY'] = 'your_jwt_secret_key_here'  # Change this in production
 CORS(app)
+db = SQLAlchemy(app)
+bcrypt = Bcrypt(app)
+jwt = JWTManager(app)
+
+# User model
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+
+# Create tables if not exist
+with app.app_context():
+    db.create_all()
+
+# Registration endpoint
+@app.route('/api/register', methods=['POST'])
+def register():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    if not username or not password:
+        return jsonify({'error': 'Username and password required.'}), 400
+    if User.query.filter_by(username=username).first():
+        return jsonify({'error': 'Username already exists.'}), 409
+    hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
+    user = User(username=username, password=hashed_pw)
+    db.session.add(user)
+    db.session.commit()
+    return jsonify({'message': 'User registered successfully.'}), 201
+
+# Login endpoint
+@app.route('/api/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    if not username or not password:
+        return jsonify({'error': 'Username and password required.'}), 400
+    user = User.query.filter_by(username=username).first()
+    if not user or not bcrypt.check_password_hash(user.password, password):
+        return jsonify({'error': 'Invalid credentials.'}), 401
+    access_token = create_access_token(identity=username)
+    return jsonify({'access_token': access_token}), 200
 @app.route("/api/predict", methods=["POST"])
 def api_predict():
     data = request.get_json()
