@@ -6,15 +6,17 @@ import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import Alert from '@mui/material/Alert';
 import { useNotification } from './NotificationProvider';
+import CircularProgress from '@mui/material/CircularProgress';
 
 
-function AuthForm({ mode = 'login', onAuthSuccess }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const notify = useNotification();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     const endpoint = mode === 'login' ? '/api/login' : '/api/register';
     try {
       const res = await fetch(`http://localhost:5000${endpoint}`, {
@@ -36,6 +38,8 @@ function AuthForm({ mode = 'login', onAuthSuccess }) {
       }
     } catch (err) {
       notify('Network error', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -49,6 +53,7 @@ function AuthForm({ mode = 'login', onAuthSuccess }) {
         required
         fullWidth
         margin="normal"
+        disabled={loading}
       />
       <TextField
         label="Password"
@@ -58,9 +63,10 @@ function AuthForm({ mode = 'login', onAuthSuccess }) {
         required
         fullWidth
         margin="normal"
+        disabled={loading}
       />
-      <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }}>
-        {mode === 'login' ? 'Login' : 'Register'}
+      <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }} disabled={loading}>
+        {loading ? <CircularProgress size={24} color="inherit" /> : (mode === 'login' ? 'Login' : 'Register')}
       </Button>
     </Box>
   );
