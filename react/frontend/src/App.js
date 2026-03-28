@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard';
+import PredictionForm from './pages/PredictionForm';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import { NotificationProvider } from './components/NotificationProvider';
@@ -37,6 +38,7 @@ function App() {
                   <Dashboard />
                 </ProtectedRoute>
               } />
+              <Route path="/predict" element={<PredictionForm />} />
               <Route path="*" element={
                 <Box textAlign="center" mt={8}>
                   <Typography variant="h4" gutterBottom>Welcome to Mobile Price Prediction</Typography>

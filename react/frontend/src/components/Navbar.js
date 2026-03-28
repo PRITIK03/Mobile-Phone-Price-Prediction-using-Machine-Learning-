@@ -21,6 +21,7 @@ function Navbar({ isLoggedIn, onLogout }) {
         <Typography variant="h6" component={RouterLink} to="/" sx={{ flexGrow: 1, color: 'inherit', textDecoration: 'none' }}>
           Mobile Price Predictor
         </Typography>
+        <Button color="inherit" component={RouterLink} to="/predict">Predict</Button>
         <Box>
           {isLoggedIn ? (
             <>
