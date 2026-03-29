@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
@@ -5,6 +6,7 @@ import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useNotification } from '../components/NotificationProvider';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function PredictionForm() {
   const [batterySize, setBatterySize] = useState('');
@@ -43,53 +45,68 @@ function PredictionForm() {
   };
 
   return (
-    <Box sx={{ maxWidth: 400, mx: 'auto', mt: 6, p: 3, border: '1px solid #eee', borderRadius: 2, boxShadow: 1 }}>
-      <Typography variant="h5" align="center" gutterBottom>Predict Mobile Price</Typography>
-      <Box component="form" onSubmit={handleSubmit}>
-        <TextField
-          label="Battery Size (mAh)"
-          value={batterySize}
-          onChange={e => setBatterySize(e.target.value)}
-          required
-          fullWidth
-          margin="normal"
-          type="number"
-          disabled={loading}
-        />
-        <TextField
-          label="Brand Name"
-          value={brandName}
-          onChange={e => setBrandName(e.target.value)}
-          required
-          fullWidth
-          margin="normal"
-          disabled={loading}
-        />
-        <TextField
-          label="Memory Size (GB)"
-          value={memorySize}
-          onChange={e => setMemorySize(e.target.value)}
-          required
-          fullWidth
-          margin="normal"
-          type="number"
-          disabled={loading}
-        />
-        <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }} disabled={loading}>
-          {loading ? <CircularProgress size={24} color="inherit" /> : 'Predict'}
-        </Button>
-      </Box>
-      {result && (
-        <Box mt={4}>
-          <Typography variant="h6">Prediction Result:</Typography>
-          <Typography>Model Name: {result.model_name}</Typography>
-          <Typography>Lowest Price: ₹{result.lowest_price}</Typography>
-          <Typography>Highest Price: ₹{result.highest_price}</Typography>
-          <Typography>Release Date: {result.release_date}</Typography>
-          <Typography>Screen Size: {result.screen_size} inches</Typography>
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <Box sx={{ maxWidth: 400, mx: 'auto', mt: 6, p: 3, border: '1px solid #eee', borderRadius: 2, boxShadow: 1 }}>
+        <Typography variant="h5" align="center" gutterBottom>Predict Mobile Price</Typography>
+        <Box component="form" onSubmit={handleSubmit}>
+          <TextField
+            label="Battery Size (mAh)"
+            value={batterySize}
+            onChange={e => setBatterySize(e.target.value)}
+            required
+            fullWidth
+            margin="normal"
+            type="number"
+            disabled={loading}
+          />
+          <TextField
+            label="Brand Name"
+            value={brandName}
+            onChange={e => setBrandName(e.target.value)}
+            required
+            fullWidth
+            margin="normal"
+            disabled={loading}
+          />
+          <TextField
+            label="Memory Size (GB)"
+            value={memorySize}
+            onChange={e => setMemorySize(e.target.value)}
+            required
+            fullWidth
+            margin="normal"
+            type="number"
+            disabled={loading}
+          />
+          <Button type="submit" variant="contained" color="primary" fullWidth sx={{ mt: 2 }} disabled={loading}>
+            {loading ? <CircularProgress size={24} color="inherit" /> : 'Predict'}
+          </Button>
         </Box>
-      )}
-    </Box>
+        <AnimatePresence>
+          {result && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.4 }}
+            >
+              <Box mt={4}>
+                <Typography variant="h6">Prediction Result:</Typography>
+                <Typography>Model Name: {result.model_name}</Typography>
+                <Typography>Lowest Price: ₹{result.lowest_price}</Typography>
+                <Typography>Highest Price: ₹{result.highest_price}</Typography>
+                <Typography>Release Date: {result.release_date}</Typography>
+                <Typography>Screen Size: {result.screen_size} inches</Typography>
+              </Box>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Box>
+    </motion.div>
   );
 }
 
