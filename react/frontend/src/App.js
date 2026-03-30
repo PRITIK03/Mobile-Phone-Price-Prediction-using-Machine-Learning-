@@ -8,10 +8,12 @@ import PredictionForm from './pages/PredictionForm';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import { NotificationProvider } from './components/NotificationProvider';
+
 import { useState, useEffect } from 'react';
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import SampleChart from './components/SampleChart';
 
 
 function App() {
@@ -43,6 +45,9 @@ function App() {
                 <Box textAlign="center" mt={8}>
                   <Typography variant="h4" gutterBottom>Welcome to Mobile Price Prediction</Typography>
                   <Typography variant="body1">Select Login or Register to continue.</Typography>
+                  <Box mt={4}>
+                    <SampleChart />
+                  </Box>
                 </Box>
               } />
             </Routes>
