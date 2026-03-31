@@ -17,6 +17,7 @@ import SampleChart from './components/SampleChart';
 import PieChart from './components/PieChart';
 import LineChart from './components/LineChart';
 import AreaChart from './components/AreaChart';
+import DonutChart from './components/DonutChart';
 
 
 function App() {
@@ -59,6 +60,9 @@ function App() {
                   </Box>
                   <Box mt={4}>
                     <AreaChart />
+                  </Box>
+                  <Box mt={4}>
+                    <DonutChart />
                   </Box>
                 </Box>
               } />
