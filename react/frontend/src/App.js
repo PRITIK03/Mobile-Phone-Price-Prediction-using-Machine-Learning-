@@ -14,6 +14,8 @@ import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import SampleChart from './components/SampleChart';
+import PieChart from './components/PieChart';
+import LineChart from './components/LineChart';
 
 
 function App() {
@@ -49,8 +51,10 @@ function App() {
                     <SampleChart />
                   </Box>
                   <Box mt={4}>
-                    <import PieChart from './components/PieChart';>
                     <PieChart />
+                  </Box>
+                  <Box mt={4}>
+                    <LineChart />
                   </Box>
                 </Box>
               } />
