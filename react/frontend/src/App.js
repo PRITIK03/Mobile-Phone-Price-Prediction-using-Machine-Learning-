@@ -48,6 +48,10 @@ function App() {
                   <Box mt={4}>
                     <SampleChart />
                   </Box>
+                  <Box mt={4}>
+                    <import PieChart from './components/PieChart';>
+                    <PieChart />
+                  </Box>
                 </Box>
               } />
             </Routes>
