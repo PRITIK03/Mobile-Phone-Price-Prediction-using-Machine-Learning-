@@ -16,6 +16,7 @@ import Typography from '@mui/material/Typography';
 import SampleChart from './components/SampleChart';
 import PieChart from './components/PieChart';
 import LineChart from './components/LineChart';
+import AreaChart from './components/AreaChart';
 
 
 function App() {
@@ -55,6 +56,9 @@ function App() {
                   </Box>
                   <Box mt={4}>
                     <LineChart />
+                  </Box>
+                  <Box mt={4}>
+                    <AreaChart />
                   </Box>
                 </Box>
               } />
