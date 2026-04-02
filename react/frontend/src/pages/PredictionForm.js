@@ -1,10 +1,14 @@
 
 import React, { useState } from 'react';
+
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import CircularProgress from '@mui/material/CircularProgress';
+import InputAdornment from '@mui/material/InputAdornment';
+import BatteryChargingFullIcon from '@mui/icons-material/BatteryChargingFull';
+import MemoryIcon from '@mui/icons-material/Memory';
 import { useNotification } from '../components/NotificationProvider';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -103,11 +107,87 @@ function PredictionForm() {
                 <Typography>Screen Size: {result.screen_size} inches</Typography>
               </Box>
             </motion.div>
-          )}
-        </AnimatePresence>
-      </Box>
-    </motion.div>
-  );
-}
-
-export default PredictionForm;
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Box sx={{ maxWidth: 400, mx: 'auto', mt: 6, p: 3, border: '1px solid #eee', borderRadius: 2, boxShadow: 1, background: 'linear-gradient(135deg, #fff 60%, #e3f2fd 100%)' }}>
+                <Typography variant="h5" align="center" gutterBottom sx={{ fontWeight: 600 }}>
+                  Predict Mobile Price
+                </Typography>
+                <Box component="form" onSubmit={handleSubmit}>
+                  <TextField
+                    label="Battery Size (mAh)"
+                    value={batterySize}
+                    onChange={e => setBatterySize(e.target.value)}
+                    required
+                    fullWidth
+                    margin="normal"
+                    type="number"
+                    disabled={loading}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <BatteryChargingFullIcon color="primary" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  <TextField
+                    label="Brand Name"
+                    value={brandName}
+                    onChange={e => setBrandName(e.target.value)}
+                    required
+                    fullWidth
+                    margin="normal"
+                    disabled={loading}
+                  />
+                  <TextField
+                    label="Memory Size (GB)"
+                    value={memorySize}
+                    onChange={e => setMemorySize(e.target.value)}
+                    required
+                    fullWidth
+                    margin="normal"
+                    type="number"
+                    disabled={loading}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <MemoryIcon color="primary" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    color="primary"
+                    fullWidth
+                    sx={{ mt: 2, minWidth: 120, fontWeight: 600, boxShadow: 2 }}
+                    disabled={loading}
+                  >
+                    Predict
+                    {loading && <CircularProgress size={20} sx={{ ml: 2 }} />}
+                  </Button>
+                </Box>
+                <AnimatePresence>
+                  {result && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 20 }}
+                      transition={{ duration: 0.4 }}
+                    >
+                      <Box mt={3} p={2} bgcolor="#e3f2fd" borderRadius={2} textAlign="center" sx={{ fontSize: 18, fontWeight: 500 }}>
+                        <Typography variant="h6" color="primary">Predicted Price Range:</Typography>
+                        <Typography variant="h5" fontWeight={700}>{result}</Typography>
+                      </Box>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </Box>
+            </motion.div>
+          );
