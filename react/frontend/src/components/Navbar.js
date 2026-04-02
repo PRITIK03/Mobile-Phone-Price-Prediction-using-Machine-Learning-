@@ -46,6 +46,18 @@ function Navbar({ isLoggedIn, onLogout }) {
         >
           Predict
         </Button>
+        <Button
+          color="inherit"
+          component={RouterLink}
+          to="/history"
+          sx={{
+            mx: 1,
+            transition: 'background 0.2s',
+            '&:hover': { background: 'rgba(255,255,255,0.12)' },
+          }}
+        >
+          History
+        </Button>
         <Box>
           {isLoggedIn ? (
             <>

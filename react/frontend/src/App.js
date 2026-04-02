@@ -3,8 +3,10 @@ import './App.css';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+
 import Dashboard from './pages/Dashboard';
 import PredictionForm from './pages/PredictionForm';
+import History from './pages/History';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import { NotificationProvider } from './components/NotificationProvider';
@@ -69,9 +71,10 @@ function App() {
             </Routes>
           </Box>
         </Container>
-      </Router>
-    </NotificationProvider>
-  );
-}
-
-export default App;
+            <Routes>
+              <Route path="/login" element={<LoginPage onAuthSuccess={handleAuthSuccess} />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/predict" element={<PredictionForm />} />
+              <Route path="/dashboard" element={<ProtectedRoute isLoggedIn={isLoggedIn}><Dashboard /></ProtectedRoute>} />
+              <Route path="/history" element={<ProtectedRoute isLoggedIn={isLoggedIn}><History /></ProtectedRoute>} />
+            </Routes>
