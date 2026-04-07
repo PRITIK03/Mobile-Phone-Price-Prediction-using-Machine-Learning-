@@ -26,7 +26,20 @@ const FunFact = () => {
       <Typography variant="subtitle1" gutterBottom>
         🤔 {fact}
       </Typography>
-      <Button variant="outlined" size="small" onClick={handleNewFact}>
+      <Button 
+        variant="contained" 
+        size="small" 
+        onClick={handleNewFact}
+        sx={{
+          background: 'linear-gradient(90deg, #1976d2 60%, #64b5f6 100%)',
+          color: '#fff',
+          borderRadius: 2,
+          boxShadow: 2,
+          fontWeight: 600,
+          textTransform: 'none',
+          ':hover': { background: 'linear-gradient(90deg, #1565c0 60%, #1976d2 100%)' }
+        }}
+      >
         Show Another Fact
       </Button>
     </Box>
