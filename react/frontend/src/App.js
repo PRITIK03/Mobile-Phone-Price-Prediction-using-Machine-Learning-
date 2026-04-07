@@ -15,6 +15,8 @@ import { useState, useEffect } from 'react';
 import Container from '@mui/material/Container';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import SampleChart from './components/SampleChart';
 import PieChart from './components/PieChart';
 import LineChart from './components/LineChart';
@@ -57,21 +59,31 @@ function App() {
                   <Typography variant="h6" sx={{ color: '#1565c0', mb: 2 }}>
                     Select Login or Register to continue.
                   </Typography>
-                  <Box mt={4}>
-                    <SampleChart />
-                  </Box>
-                  <Box mt={4}>
-                    <PieChart />
-                  </Box>
-                  <Box mt={4}>
-                    <LineChart />
-                  </Box>
-                  <Box mt={4}>
-                    <AreaChart />
-                  </Box>
-                  <Box mt={4}>
-                    <DonutChart />
-                  </Box>
+                  <Card sx={{ mt: 4, mb: 2, borderRadius: 3, boxShadow: 3, maxWidth: 350, mx: 'auto', background: '#fff' }}>
+                    <CardContent>
+                      <SampleChart />
+                    </CardContent>
+                  </Card>
+                  <Card sx={{ mt: 4, mb: 2, borderRadius: 3, boxShadow: 3, maxWidth: 350, mx: 'auto', background: '#fff' }}>
+                    <CardContent>
+                      <PieChart />
+                    </CardContent>
+                  </Card>
+                  <Card sx={{ mt: 4, mb: 2, borderRadius: 3, boxShadow: 3, maxWidth: 350, mx: 'auto', background: '#fff' }}>
+                    <CardContent>
+                      <LineChart />
+                    </CardContent>
+                  </Card>
+                  <Card sx={{ mt: 4, mb: 2, borderRadius: 3, boxShadow: 3, maxWidth: 350, mx: 'auto', background: '#fff' }}>
+                    <CardContent>
+                      <AreaChart />
+                    </CardContent>
+                  </Card>
+                  <Card sx={{ mt: 4, mb: 2, borderRadius: 3, boxShadow: 3, maxWidth: 350, mx: 'auto', background: '#fff' }}>
+                    <CardContent>
+                      <DonutChart />
+                    </CardContent>
+                  </Card>
                   <RandomTip />
                   <FunFact />
                 </Box>
