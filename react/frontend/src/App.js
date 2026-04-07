@@ -21,6 +21,7 @@ import LineChart from './components/LineChart';
 import AreaChart from './components/AreaChart';
 import DonutChart from './components/DonutChart';
 import RandomTip from './components/RandomTip';
+import FunFact from './components/FunFact';
 
 
 function App() {
@@ -68,6 +69,7 @@ function App() {
                     <DonutChart />
                   </Box>
                   <RandomTip />
+                  <FunFact />
                 </Box>
               } />
             </Routes>
