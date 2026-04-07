@@ -8,8 +8,8 @@ const AreaChart = () => {
   const areaPoints = `0,100 ${points} ${180},100`;
 
   return (
-    <div style={{ width: '220px', margin: '20px auto' }}>
-      <h4>Sample Area Chart</h4>
+    <div style={{ width: '220px', margin: '20px auto', background: '#e8f5e9', borderRadius: 12, padding: 12 }}>
+      <h4 style={{ color: '#388e3c', marginBottom: 8 }}>Sample Area Chart</h4>
       <svg width="200" height="110">
         <polygon
           fill="#4e79a7"

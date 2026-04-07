@@ -11,8 +11,8 @@ const SampleChart = () => {
   const maxValue = Math.max(...data.map(d => d.value));
 
   return (
-    <div style={{ width: '300px', margin: '20px auto' }}>
-      <h3>Sample Bar Chart</h3>
+    <div style={{ width: '300px', margin: '20px auto', background: '#e3f2fd', borderRadius: 12, padding: 12 }}>
+      <h3 style={{ color: '#1976d2', marginBottom: 8 }}>Sample Bar Chart</h3>
       <svg width="300" height="150">
         {data.map((d, i) => (
           <g key={d.label}>

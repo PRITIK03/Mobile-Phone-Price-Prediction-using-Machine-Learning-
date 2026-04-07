@@ -11,8 +11,8 @@ const DonutChart = () => {
   let cumulative = 0;
 
   return (
-    <div style={{ width: '180px', margin: '20px auto' }}>
-      <h4>Sample Donut Chart</h4>
+    <div style={{ width: '180px', margin: '20px auto', background: '#f3e5f5', borderRadius: 12, padding: 12 }}>
+      <h4 style={{ color: '#8e24aa', marginBottom: 8 }}>Sample Donut Chart</h4>
       <svg width="150" height="150" viewBox="0 0 32 32">
         {data.map((d, i) => {
           const startAngle = (cumulative / total) * 2 * Math.PI;

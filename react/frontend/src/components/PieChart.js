@@ -11,8 +11,8 @@ const PieChart = () => {
   let cumulative = 0;
 
   return (
-    <div style={{ width: '180px', margin: '20px auto' }}>
-      <h4>Sample Pie Chart</h4>
+    <div style={{ width: '180px', margin: '20px auto', background: '#fff3e0', borderRadius: 12, padding: 12 }}>
+      <h4 style={{ color: '#f57c00', marginBottom: 8 }}>Sample Pie Chart</h4>
       <svg width="150" height="150" viewBox="0 0 32 32">
         {data.map((d, i) => {
           const startAngle = (cumulative / total) * 2 * Math.PI;

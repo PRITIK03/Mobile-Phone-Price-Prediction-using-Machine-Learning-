@@ -7,8 +7,8 @@ const LineChart = () => {
   const points = data.map((d, i) => `${i * 30},${100 - (d / maxValue) * 80}`).join(' ');
 
   return (
-    <div style={{ width: '220px', margin: '20px auto' }}>
-      <h4>Sample Line Chart</h4>
+    <div style={{ width: '220px', margin: '20px auto', background: '#e3f2fd', borderRadius: 12, padding: 12 }}>
+      <h4 style={{ color: '#1976d2', marginBottom: 8 }}>Sample Line Chart</h4>
       <svg width="200" height="110">
         <polyline
           fill="none"
