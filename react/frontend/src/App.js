@@ -20,6 +20,7 @@ import PieChart from './components/PieChart';
 import LineChart from './components/LineChart';
 import AreaChart from './components/AreaChart';
 import DonutChart from './components/DonutChart';
+import RandomTip from './components/RandomTip';
 
 
 function App() {
@@ -66,6 +67,7 @@ function App() {
                   <Box mt={4}>
                     <DonutChart />
                   </Box>
+                  <RandomTip />
                 </Box>
               } />
             </Routes>
