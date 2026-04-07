@@ -51,8 +51,12 @@ function App() {
               <Route path="/predict" element={<PredictionForm />} />
               <Route path="*" element={
                 <Box textAlign="center" mt={8} sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #e3f2fd 0%, #fff 100%)' }}>
-                  <Typography variant="h4" gutterBottom>Welcome to Mobile Price Prediction</Typography>
-                  <Typography variant="body1">Select Login or Register to continue.</Typography>
+                  <Typography variant="h3" gutterBottom sx={{ fontWeight: 700, color: '#1976d2', letterSpacing: 1 }}>
+                    Welcome to Mobile Price Prediction
+                  </Typography>
+                  <Typography variant="h6" sx={{ color: '#1565c0', mb: 2 }}>
+                    Select Login or Register to continue.
+                  </Typography>
                   <Box mt={4}>
                     <SampleChart />
                   </Box>
