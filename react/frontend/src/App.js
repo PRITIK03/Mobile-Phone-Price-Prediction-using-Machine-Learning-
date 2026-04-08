@@ -59,27 +59,27 @@ function App() {
                   <Typography variant="h6" sx={{ color: '#1565c0', mb: 2 }}>
                     Select Login or Register to continue.
                   </Typography>
-                  <Card sx={{ mt: 4, mb: 2, borderRadius: 3, boxShadow: 3, maxWidth: 350, mx: 'auto', background: '#fff' }}>
+                  <Card sx={{ mt: 4, mb: 2, borderRadius: 3, boxShadow: 3, maxWidth: 350, mx: 'auto', background: '#fff', transition: 'transform 0.2s, box-shadow 0.2s', ':hover': { transform: 'scale(1.03)', boxShadow: 6 } }}>
                     <CardContent>
                       <SampleChart />
                     </CardContent>
                   </Card>
-                  <Card sx={{ mt: 4, mb: 2, borderRadius: 3, boxShadow: 3, maxWidth: 350, mx: 'auto', background: '#fff' }}>
+                  <Card sx={{ mt: 4, mb: 2, borderRadius: 3, boxShadow: 3, maxWidth: 350, mx: 'auto', background: '#fff', transition: 'transform 0.2s, box-shadow 0.2s', ':hover': { transform: 'scale(1.03)', boxShadow: 6 } }}>
                     <CardContent>
                       <PieChart />
                     </CardContent>
                   </Card>
-                  <Card sx={{ mt: 4, mb: 2, borderRadius: 3, boxShadow: 3, maxWidth: 350, mx: 'auto', background: '#fff' }}>
+                  <Card sx={{ mt: 4, mb: 2, borderRadius: 3, boxShadow: 3, maxWidth: 350, mx: 'auto', background: '#fff', transition: 'transform 0.2s, box-shadow 0.2s', ':hover': { transform: 'scale(1.03)', boxShadow: 6 } }}>
                     <CardContent>
                       <LineChart />
                     </CardContent>
                   </Card>
-                  <Card sx={{ mt: 4, mb: 2, borderRadius: 3, boxShadow: 3, maxWidth: 350, mx: 'auto', background: '#fff' }}>
+                  <Card sx={{ mt: 4, mb: 2, borderRadius: 3, boxShadow: 3, maxWidth: 350, mx: 'auto', background: '#fff', transition: 'transform 0.2s, box-shadow 0.2s', ':hover': { transform: 'scale(1.03)', boxShadow: 6 } }}>
                     <CardContent>
                       <AreaChart />
                     </CardContent>
                   </Card>
-                  <Card sx={{ mt: 4, mb: 2, borderRadius: 3, boxShadow: 3, maxWidth: 350, mx: 'auto', background: '#fff' }}>
+                  <Card sx={{ mt: 4, mb: 2, borderRadius: 3, boxShadow: 3, maxWidth: 350, mx: 'auto', background: '#fff', transition: 'transform 0.2s, box-shadow 0.2s', ':hover': { transform: 'scale(1.03)', boxShadow: 6 } }}>
                     <CardContent>
                       <DonutChart />
                     </CardContent>
