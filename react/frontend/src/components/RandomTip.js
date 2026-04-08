@@ -22,8 +22,8 @@ const RandomTip = () => {
   };
 
   return (
-    <Box mt={4} p={2} borderRadius={2} boxShadow={1} bgcolor="#f5f5f5" textAlign="center">
-      <Typography variant="subtitle1" gutterBottom>
+    <Box mt={4} p={3} borderRadius={3} boxShadow={3} bgcolor="#e3f2fd" textAlign="center" sx={{ maxWidth: 350, mx: 'auto' }}>
+      <Typography variant="subtitle1" gutterBottom sx={{ color: '#1976d2', fontWeight: 600 }}>
         📱 {tip}
       </Typography>
       <Button 

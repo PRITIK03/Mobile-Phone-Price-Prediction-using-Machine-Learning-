@@ -22,8 +22,8 @@ const FunFact = () => {
   };
 
   return (
-    <Box mt={4} p={2} borderRadius={2} boxShadow={1} bgcolor="#e3f2fd" textAlign="center">
-      <Typography variant="subtitle1" gutterBottom>
+    <Box mt={4} p={3} borderRadius={3} boxShadow={3} bgcolor="#f3e5f5" textAlign="center" sx={{ maxWidth: 350, mx: 'auto' }}>
+      <Typography variant="subtitle1" gutterBottom sx={{ color: '#8e24aa', fontWeight: 600 }}>
         🤔 {fact}
       </Typography>
       <Button 
