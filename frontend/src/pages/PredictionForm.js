@@ -145,12 +145,97 @@ const PredictionForm = () => {
         <Fade in={!!result} timeout={600}>
           <Box>
             {result && (
-              <Alert severity="success" sx={{ mt: 2, fontSize: 18, fontWeight: 500 }}>
-                Predicted Price Range: <b>{result}</b>
-              </Alert>
+              <Box sx={{ mt: 3 }}>
+                {/* Main Result Card */}
+                <Card elevation={4} sx={{ mb: 3, background: 'linear-gradient(135deg, #4caf50 0%, #8bc34a 100%)', color: 'white' }}>
+                  <CardContent sx={{ textAlign: 'center' }}>
+                    <Typography variant="h6" gutterBottom>
+                      <SmartphoneIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                      Recommended Phone
+                    </Typography>
+                    <Typography variant="h4" fontWeight={700} sx={{ mb: 1 }}>
+                      {result.model_name}
+                    </Typography>
+                    <Typography variant="body1">
+                      {result.brand_name} • {result.screen_size}" • {result.release_date}
+                    </Typography>
+                  </CardContent>
+                </Card>
+
+                {/* Price Range Micro Chart */}
+                <Card elevation={2} sx={{ mb: 2 }}>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <AttachMoneyIcon color="primary" />
+                      Price Range Analysis
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={150}>
+                      <BarChart data={generatePriceComparisonData(result)}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip formatter={(value) => [`₹${value}`, 'Price']} />
+                        <Bar dataKey="price" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        Lowest: ₹{result.lowest_price}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Highest: ₹{result.highest_price}
+                      </Typography>
+                    </Box>
+                  </CardContent>
+                </Card>
+
+                {/* Specs Comparison Micro Chart */}
+                <Card elevation={2} sx={{ mb: 2 }}>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Performance Metrics
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={120}>
+                      <BarChart data={generateSpecComparisonData(result)} layout="horizontal">
+                        <XAxis type="number" domain={[0, 100]} />
+                        <YAxis dataKey="spec" type="category" width={60} />
+                        <Tooltip formatter={(value) => [`${value}%`, 'Score']} />
+                        <Bar dataKey="value" fill="#2196f3" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                {/* Quick Stats */}
+                <Grid container spacing={2} sx={{ mt: 2 }}>
+                  <Grid item xs={6}>
+                    <Card elevation={1} sx={{ textAlign: 'center', p: 2, background: '#f5f5f5' }}>
+                      <CalendarTodayIcon color="action" sx={{ fontSize: 20, mb: 0.5 }} />
+                      <Typography variant="body2" color="text.secondary">
+                        Release Date
+                      </Typography>
+                      <Typography variant="h6" fontWeight={600}>
+                        {result.release_date}
+                      </Typography>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Card elevation={1} sx={{ textAlign: 'center', p: 2, background: '#f5f5f5' }}>
+                      <SmartphoneIcon color="action" sx={{ fontSize: 20, mb: 0.5 }} />
+                      <Typography variant="body2" color="text.secondary">
+                        Screen Size
+                      </Typography>
+                      <Typography variant="h6" fontWeight={600}>
+                        {result.screen_size}"
+                      </Typography>
+                    </Card>
+                  </Grid>
+                </Grid>
+              </Box>
             )}
           </Box>
         </Fade>
       </Paper>
     </Container>
   );
+};

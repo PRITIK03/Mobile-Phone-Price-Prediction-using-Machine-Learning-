@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Phone Recommendation System</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: 'Arial', sans-serif;
@@ -101,6 +102,34 @@
             margin-top: 20px;
             font-size: 0.8rem;
             color: #ffffffa0;
+        }
+
+        .chart-container {
+            background-color: #ffffff30;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .micro-chart {
+            width: 100%;
+            height: 150px;
+            margin: 10px 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .stat-card {
+            background-color: #ffffff40;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
         }
     </style>
 </head>
