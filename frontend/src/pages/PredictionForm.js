@@ -1,19 +1,17 @@
 
 import React, { useState } from 'react';
-import { Container, Typography, Paper, Box, TextField, Button, Grid, Alert, InputAdornment, CircularProgress, Fade } from '@mui/material';
+import { Container, Typography, Paper, Box, TextField, Button, Grid, Alert, InputAdornment, CircularProgress, Fade, Card, CardContent } from '@mui/material';
 import BatteryChargingFullIcon from '@mui/icons-material/BatteryChargingFull';
 import MemoryIcon from '@mui/icons-material/Memory';
+import SmartphoneIcon from '@mui/icons-material/Smartphone';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from 'recharts';
 
 const initialForm = {
-  battery_power: '',
-  ram: '',
-  px_height: '',
-  px_width: '',
-  mobile_wt: '',
-  n_cores: '',
-  clock_speed: '',
-  int_memory: '',
-  // Add more fields as needed
+  battery_size: '',
+  brand_name: '',
+  memory_size: '',
 };
 
 const PredictionForm = () => {
@@ -21,7 +19,6 @@ const PredictionForm = () => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -33,7 +30,6 @@ const PredictionForm = () => {
     setError(null);
     setResult(null);
     try {
-      // Replace with your backend API endpoint
       const response = await fetch('http://localhost:5000/api/predict', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -41,7 +37,7 @@ const PredictionForm = () => {
       });
       const data = await response.json();
       if (response.ok) {
-        setTimeout(() => setResult(data.prediction), 500); // Animation delay
+        setTimeout(() => setResult(data.prediction), 500);
       } else {
         setError(data.error || 'Prediction failed.');
       }
@@ -49,6 +45,25 @@ const PredictionForm = () => {
       setError('Server error.');
     }
     setLoading(false);
+  };
+
+  const generatePriceComparisonData = (result) => {
+    if (!result) return [];
+    return [
+      { name: 'Lowest', price: result.lowest_price, fill: '#4caf50' },
+      { name: 'Highest', price: result.highest_price, fill: '#ff9800' },
+      { name: 'Average', price: (result.lowest_price + result.highest_price) / 2, fill: '#2196f3' }
+    ];
+  };
+
+  const generateSpecComparisonData = (result) => {
+    if (!result) return [];
+    return [
+      { spec: 'Battery', value: 85, max: 100 },
+      { spec: 'Memory', value: 78, max: 100 },
+      { spec: 'Screen', value: (result.screen_size / 7) * 100, max: 100 },
+      { spec: 'Value', value: 92, max: 100 }
+    ];
   };
 
   return (
@@ -61,9 +76,9 @@ const PredictionForm = () => {
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="Battery Power (mAh)"
-                name="battery_power"
-                value={form.battery_power}
+                label="Battery Size (mAh)"
+                name="battery_size"
+                value={form.battery_size}
                 onChange={handleChange}
                 fullWidth
                 required
@@ -78,9 +93,9 @@ const PredictionForm = () => {
             </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
-                label="RAM (MB)"
-                name="ram"
-                value={form.ram}
+                label="Memory Size (GB)"
+                name="memory_size"
+                value={form.memory_size}
                 onChange={handleChange}
                 fullWidth
                 required
@@ -93,7 +108,23 @@ const PredictionForm = () => {
                 }}
               />
             </Grid>
-            {/* ...existing code... */}
+            <Grid item xs={12}>
+              <TextField
+                label="Brand Name"
+                name="brand_name"
+                value={form.brand_name}
+                onChange={handleChange}
+                fullWidth
+                required
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SmartphoneIcon color="primary" />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Grid>
           </Grid>
           <Button
             type="submit"
