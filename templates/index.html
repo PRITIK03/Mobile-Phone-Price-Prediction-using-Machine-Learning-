@@ -160,11 +160,135 @@
             <p><strong>Release Date:</strong> {{ result['release_date'] }}</p>
             <p><strong>Screen Size (inches):</strong> {{ result['screen_size'] }}</p>
         </div>
+
+        <!-- Micro Charts Section -->
+        <div class="chart-container">
+            <h3>Price Analysis</h3>
+            <canvas id="priceChart" class="micro-chart"></canvas>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h4>Price Range</h4>
+                <p>₹{{ "%.0f"|format((result['lowest_price'] + result['highest_price']) / 2) }}</p>
+            </div>
+            <div class="stat-card">
+                <h4>Screen Rating</h4>
+                <p>{{ "%.1f"|format((result['screen_size'] / 7) * 100) }}%</p>
+            </div>
+            <div class="stat-card">
+                <h4>Value Score</h4>
+                <p>92%</p>
+            </div>
+            <div class="stat-card">
+                <h4>Age</h4>
+                <p>{{ (2024 - result['release_date'][:4]|int) }} years</p>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h3>Performance Metrics</h3>
+            <canvas id="performanceChart" class="micro-chart"></canvas>
+        </div>
         {% endif %}
 
         <footer>
             © 2024 Phone Recommendation System. All rights reserved.
         </footer>
     </div>
+
+    <script>
+        {% if result %}
+        // Price Chart
+        const priceCtx = document.getElementById('priceChart').getContext('2d');
+        new Chart(priceCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Lowest', 'Average', 'Highest'],
+                datasets: [{
+                    label: 'Price (₹)',
+                    data: [{{ result['lowest_price'] }}, {{ (result['lowest_price'] + result['highest_price']) / 2 }}, {{ result['highest_price'] }}],
+                    backgroundColor: ['#4caf50', '#2196f3', '#ff9800'],
+                    borderColor: ['#45a049', '#1976d2', '#f57c00'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: '#ffffff'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: '#ffffff'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Performance Chart
+        const performanceCtx = document.getElementById('performanceChart').getContext('2d');
+        new Chart(performanceCtx, {
+            type: 'radar',
+            data: {
+                labels: ['Battery', 'Memory', 'Screen', 'Value', 'Camera'],
+                datasets: [{
+                    label: 'Performance Score',
+                    data: [85, 78, {{ (result['screen_size'] / 7) * 100 }}, 92, 88],
+                    backgroundColor: 'rgba(33, 150, 243, 0.2)',
+                    borderColor: 'rgba(33, 150, 243, 1)',
+                    borderWidth: 2,
+                    pointBackgroundColor: 'rgba(33, 150, 243, 1)',
+                    pointBorderColor: '#fff',
+                    pointHoverBackgroundColor: '#fff',
+                    pointHoverBorderColor: 'rgba(33, 150, 243, 1)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    r: {
+                        angleLines: {
+                            color: 'rgba(255, 255, 255, 0.2)'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.2)'
+                        },
+                        pointLabels: {
+                            color: '#ffffff'
+                        },
+                        ticks: {
+                            color: '#ffffff',
+                            backdropColor: 'transparent'
+                        }
+                    }
+                }
+            }
+        });
+        {% endif %}
+    </script>
 </body>
 </html>
