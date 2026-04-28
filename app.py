@@ -9,14 +9,26 @@ from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 
 # Load the trained models and label encoder
-with open("models/regressor.pkl", "rb") as f:
-    regressor = pickle.load(f)
+try:
+    with open("models/regressor.pkl", "rb") as f:
+        regressor = pickle.load(f)
+except FileNotFoundError:
+    print("Warning: regressor.pkl not found. Please ensure model files are in the models directory.")
+    regressor = None
 
-with open("models/classifier.pkl", "rb") as f:
-    classifier = pickle.load(f)
+try:
+    with open("models/classifier.pkl", "rb") as f:
+        classifier = pickle.load(f)
+except FileNotFoundError:
+    print("Warning: classifier.pkl not found. Please ensure model files are in the models directory.")
+    classifier = None
 
-with open("models/label_encoder.pkl", "rb") as f:
-    label_encoder = pickle.load(f)
+try:
+    with open("models/label_encoder.pkl", "rb") as f:
+        label_encoder = pickle.load(f)
+except FileNotFoundError:
+    print("Warning: label_encoder.pkl not found. Please ensure model files are in the models directory.")
+    label_encoder = None
 
 
 
@@ -70,92 +82,136 @@ def login():
     return jsonify({'access_token': access_token}), 200
 @app.route("/api/predict", methods=["POST"])
 def api_predict():
+    if not all([regressor, classifier, label_encoder]):
+        return jsonify({"error": "Models not loaded. Please check model files."}), 500
+    
     data = request.get_json()
     try:
         battery_size = float(data["battery_size"])
         brand_name = data["brand_name"]
         memory_size = float(data["memory_size"])
+        
+        # Validate input ranges
+        if battery_size <= 0 or battery_size > 10000:
+            return jsonify({"error": "Battery size must be between 1 and 10000 mAh."}), 400
+        if memory_size <= 0 or memory_size > 512:
+            return jsonify({"error": "Memory size must be between 1 and 512 GB."}), 400
+        if not brand_name or len(brand_name.strip()) == 0:
+            return jsonify({"error": "Brand name is required."}), 400
+            
     except (KeyError, ValueError, TypeError):
-        return jsonify({"error": "Invalid input."}), 400
+        return jsonify({"error": "Invalid input format."}), 400
 
     # Encode brand_name
     try:
-        brand_name_encoded = label_encoder.transform([brand_name])[0]
+        brand_name_encoded = label_encoder.transform([brand_name.strip()])[0]
     except ValueError:
-        return jsonify({"error": "Brand name not recognized!"}), 400
+        return jsonify({"error": "Brand name not recognized! Try: Samsung, Apple, Xiaomi, OnePlus, etc."}), 400
 
     X_input = np.array([[battery_size, brand_name_encoded, memory_size]])
 
     try:
         model_name_encoded = classifier.predict(X_input)[0]
         model_name = label_encoder.inverse_transform([model_name_encoded])[0]
-    except Exception:
+    except Exception as e:
+        print(f"Classifier error: {e}")
         model_name = "Unknown (unseen in training data)"
 
-    y_pred = regressor.predict(X_input)
-    lowest_price = y_pred[0][0]
-    highest_price = y_pred[0][1]
-    release_date = y_pred[0][2]
-    screen_size = y_pred[0][3]
-    release_date = datetime.utcfromtimestamp(release_date).strftime('%Y-%m-%d')
-
-    result = {
-        "model_name": model_name,
-        "lowest_price": round(lowest_price, 2),
-        "highest_price": round(highest_price, 2),
-        "release_date": release_date,
-        "screen_size": round(screen_size, 2)
-    }
-    return jsonify({"prediction": result})
-
-@app.route("/", methods=["GET", "POST"])
-def index():
-    if request.method == "POST":
-        # Get input values from the form
-        battery_size = float(request.form["battery_size"])
-        brand_name = request.form["brand_name"]
-        memory_size = float(request.form["memory_size"])
-
-        # Encode brand_name
-        try:
-            brand_name_encoded = label_encoder.transform([brand_name])[0]
-        except ValueError:
-            return render_template("index.html", result={"error": "Brand name not recognized!"})
-
-        # Create feature array for prediction
-        X_input = np.array([[battery_size, brand_name_encoded, memory_size]])
-
-        # Predict the model name
-        try:
-            model_name_encoded = classifier.predict(X_input)[0]
-            model_name = label_encoder.inverse_transform([model_name_encoded])[0]
-        except ValueError:
-            # Handle unseen label
-            model_name = "Unknown (unseen in training data)"
-
-        # Predict other details (price, release date, screen size)
+    try:
         y_pred = regressor.predict(X_input)
-
-        # Get predicted values
-        lowest_price = y_pred[0][0]
-        highest_price = y_pred[0][1]
+        lowest_price = max(0, y_pred[0][0])  # Ensure non-negative
+        highest_price = max(0, y_pred[0][1])  # Ensure non-negative
         release_date = y_pred[0][2]
-        screen_size = y_pred[0][3]
+        screen_size = max(1, min(10, y_pred[0][3]))  # Reasonable screen size range
+        
+        # Convert release date from Unix timestamp to readable date
+        try:
+            release_date = datetime.utcfromtimestamp(release_date).strftime('%Y-%m-%d')
+        except (ValueError, OSError):
+            release_date = datetime.now().strftime('%Y-%m-%d')  # Fallback to current date
 
-        # Convert release date from Unix timestamp to a readable date format
-        release_date = datetime.utcfromtimestamp(release_date).strftime('%Y-%m-%d')
-
-        # Prepare results
         result = {
             "model_name": model_name,
+            "brand_name": brand_name.strip(),  # Include brand name for frontend
             "lowest_price": round(lowest_price, 2),
             "highest_price": round(highest_price, 2),
             "release_date": release_date,
             "screen_size": round(screen_size, 2)
         }
+        return jsonify({"prediction": result})
+    except Exception as e:
+        print(f"Regressor error: {e}")
+        return jsonify({"error": "Prediction failed. Please try again."}), 500
 
-        # Return results to the template
-        return render_template("index.html", result=result)
+@app.route("/", methods=["GET", "POST"])
+def index():
+    if request.method == "POST":
+        if not all([regressor, classifier, label_encoder]):
+            return render_template("index.html", result={"error": "Models not loaded. Please check model files."})
+        
+        try:
+            # Get input values from the form
+            battery_size = float(request.form["battery_size"])
+            brand_name = request.form["brand_name"]
+            memory_size = float(request.form["memory_size"])
+            
+            # Validate input ranges
+            if battery_size <= 0 or battery_size > 10000:
+                return render_template("index.html", result={"error": "Battery size must be between 1 and 10000 mAh."})
+            if memory_size <= 0 or memory_size > 512:
+                return render_template("index.html", result={"error": "Memory size must be between 1 and 512 GB."})
+            if not brand_name or len(brand_name.strip()) == 0:
+                return render_template("index.html", result={"error": "Brand name is required."})
+
+            # Encode brand_name
+            try:
+                brand_name_encoded = label_encoder.transform([brand_name.strip()])[0]
+            except ValueError:
+                return render_template("index.html", result={"error": "Brand name not recognized! Try: Samsung, Apple, Xiaomi, OnePlus, etc."})
+
+            # Create feature array for prediction
+            X_input = np.array([[battery_size, brand_name_encoded, memory_size]])
+
+            # Predict the model name
+            try:
+                model_name_encoded = classifier.predict(X_input)[0]
+                model_name = label_encoder.inverse_transform([model_name_encoded])[0]
+            except Exception as e:
+                print(f"Classifier error: {e}")
+                model_name = "Unknown (unseen in training data)"
+
+            # Predict other details (price, release date, screen size)
+            try:
+                y_pred = regressor.predict(X_input)
+                lowest_price = max(0, y_pred[0][0])  # Ensure non-negative
+                highest_price = max(0, y_pred[0][1])  # Ensure non-negative
+                release_date = y_pred[0][2]
+                screen_size = max(1, min(10, y_pred[0][3]))  # Reasonable screen size range
+
+                # Convert release date from Unix timestamp to a readable date format
+                try:
+                    release_date = datetime.utcfromtimestamp(release_date).strftime('%Y-%m-%d')
+                except (ValueError, OSError):
+                    release_date = datetime.now().strftime('%Y-%m-%d')  # Fallback to current date
+
+                # Prepare results
+                result = {
+                    "model_name": model_name,
+                    "brand_name": brand_name.strip(),  # Include brand name for frontend
+                    "lowest_price": round(lowest_price, 2),
+                    "highest_price": round(highest_price, 2),
+                    "release_date": release_date,
+                    "screen_size": round(screen_size, 2)
+                }
+
+                # Return results to the template
+                return render_template("index.html", result=result)
+            except Exception as e:
+                print(f"Regressor error: {e}")
+                return render_template("index.html", result={"error": "Prediction failed. Please try again."})
+                
+        except (ValueError, TypeError, KeyError):
+            return render_template("index.html", result={"error": "Invalid input format."})
 
     return render_template("index.html")
 
