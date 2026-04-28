@@ -62,7 +62,7 @@ const PredictionForm = () => {
     return [
       { spec: 'Battery', value: 85, max: 100 },
       { spec: 'Memory', value: 78, max: 100 },
-      { spec: 'Screen', value: (result.screen_size / 7) * 100, max: 100 },
+      { spec: 'Screen', value: result.screen_size ? Math.min(100, (result.screen_size / 7) * 100) : 0, max: 100 },
       { spec: 'Value', value: 92, max: 100 }
     ];
   };
