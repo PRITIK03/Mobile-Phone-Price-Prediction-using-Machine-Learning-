@@ -39,6 +39,40 @@ const Dashboard = () => {
     { battery: '7000', efficiency: 96 }
   ];
 
+  const marketTrends = [
+    { quarter: 'Q1 2023', avgPrice: 28000, units: 450 },
+    { quarter: 'Q2 2023', avgPrice: 29500, units: 480 },
+    { quarter: 'Q3 2023', avgPrice: 31000, units: 520 },
+    { quarter: 'Q4 2023', avgPrice: 32500, units: 580 },
+    { quarter: 'Q1 2024', avgPrice: 34000, units: 620 }
+  ];
+
+  const featureComparison = [
+    { feature: '5G', adoption: 78, satisfaction: 92 },
+    { feature: 'AMOLED', adoption: 65, satisfaction: 88 },
+    { feature: 'Fast Charging', adoption: 85, satisfaction: 95 },
+    { feature: 'Multiple Cameras', adoption: 92, satisfaction: 87 },
+    { feature: 'High Refresh Rate', adoption: 58, satisfaction: 90 }
+  ];
+
+  const confidenceData = [
+    { range: '±5%', confidence: 95 },
+    { range: '±10%', confidence: 88 },
+    { range: '±15%', confidence: 76 },
+    { range: '±20%', confidence: 62 },
+    { range: '±25%', confidence: 48 }
+  ];
+
+  const userActivity = [
+    { hour: '00', activity: 12 },
+    { hour: '04', activity: 8 },
+    { hour: '08', activity: 35 },
+    { hour: '12', activity: 68 },
+    { hour: '16', activity: 82 },
+    { hour: '20', activity: 58 },
+    { hour: '23', activity: 25 }
+  ];
+
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 4 }}>
@@ -153,6 +187,109 @@ const Dashboard = () => {
                 <Area type="monotone" dataKey="efficiency" stroke="#ed6c02" fill="#ffcc80" />
               </AreaChart>
             </ResponsiveContainer>
+          </Paper>
+        </Grid>
+      </Grid>
+
+      {/* Additional Charts Row */}
+      <Grid container spacing={3} sx={{ mt: 3 }}>
+        {/* Market Trends Line Chart */}
+        <Grid item xs={12} md={8}>
+          <Paper elevation={3} sx={{ p: 3, height: 350 }}>
+            <Typography variant="h6" gutterBottom>Market Trends Analysis</Typography>
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={marketTrends}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="quarter" />
+                <YAxis yAxisId="left" />
+                <YAxis yAxisId="right" orientation="right" />
+                <Tooltip />
+                <Legend />
+                <Line yAxisId="left" type="monotone" dataKey="avgPrice" stroke="#2196f3" name="Avg Price (₹)" strokeWidth={2} />
+                <Line yAxisId="right" type="monotone" dataKey="units" stroke="#4caf50" name="Units Sold" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Grid>
+
+        {/* Confidence Level Chart */}
+        <Grid item xs={12} md={4}>
+          <Paper elevation={3} sx={{ p: 3, height: 350 }}>
+            <Typography variant="h6" gutterBottom>Prediction Confidence</Typography>
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart data={confidenceData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="range" />
+                <YAxis />
+                <Tooltip />
+                <Area type="monotone" dataKey="confidence" stroke="#9c27b0" fill="#e1bee7" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Grid>
+      </Grid>
+
+      {/* Feature Comparison and User Activity Row */}
+      <Grid container spacing={3} sx={{ mt: 3 }}>
+        {/* Feature Comparison Scatter Chart */}
+        <Grid item xs={12} md={6}>
+          <Paper elevation={3} sx={{ p: 3, height: 350 }}>
+            <Typography variant="h6" gutterBottom>Feature Adoption vs Satisfaction</Typography>
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={featureComparison}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="feature" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="adoption" fill="#ff9800" name="Adoption %" />
+                <Bar dataKey="satisfaction" fill="#4caf50" name="Satisfaction %" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Grid>
+
+        {/* User Activity Heat Map */}
+        <Grid item xs={12} md={6}>
+          <Paper elevation={3} sx={{ p: 3, height: 350 }}>
+            <Typography variant="h6" gutterBottom>User Activity by Hour</Typography>
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart data={userActivity}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="hour" />
+                <YAxis />
+                <Tooltip />
+                <Area type="monotone" dataKey="activity" stroke="#607d8b" fill="#cfd8dc" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </Paper>
+        </Grid>
+      </Grid>
+
+      {/* Additional Micro Stats */}
+      <Grid container spacing={2} sx={{ mt: 3 }}>
+        <Grid item xs={6} sm={3}>
+          <Paper elevation={1} sx={{ p: 2, textAlign: 'center', background: 'linear-gradient(135deg, #fff9c4 0%, #fff 100%)' }}>
+            <Typography variant="body2" color="text.secondary">Market Growth</Typography>
+            <Typography variant="h6" fontWeight={700} color="#f57c00">+21.4%</Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={6} sm={3}>
+          <Paper elevation={1} sx={{ p: 2, textAlign: 'center', background: 'linear-gradient(135deg, #f8bbd0 0%, #fff 100%)' }}>
+            <Typography variant="body2" color="text.secondary">Avg Confidence</Typography>
+            <Typography variant="h6" fontWeight={700} color="#c2185b">73.8%</Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={6} sm={3}>
+          <Paper elevation={1} sx={{ p: 2, textAlign: 'center', background: 'linear-gradient(135deg, #c8e6c9 0%, #fff 100%)' }}>
+            <Typography variant="body2" color="text.secondary">Peak Activity</Typography>
+            <Typography variant="h6" fontWeight={700} color="#388e3c">4PM</Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={6} sm={3}>
+          <Paper elevation={1} sx={{ p: 2, textAlign: 'center', background: 'linear-gradient(135deg, #bbdefb 0%, #fff 100%)' }}>
+            <Typography variant="body2" color="text.secondary">Top Feature</Typography>
+            <Typography variant="h6" fontWeight={700} color="#1976d2">5G</Typography>
           </Paper>
         </Grid>
       </Grid>

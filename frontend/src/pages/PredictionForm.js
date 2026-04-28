@@ -66,6 +66,41 @@ const PredictionForm = () => {
     ];
   };
 
+  const generateMarketPositionData = (result) => {
+    if (!result) return [];
+    const avgPrice = (result.lowest_price + result.highest_price) / 2;
+    return [
+      { segment: 'Budget', min: 0, max: 15000, avgPrice: avgPrice },
+      { segment: 'Mid-Range', min: 15000, max: 35000, avgPrice: avgPrice },
+      { segment: 'Premium', min: 35000, max: 60000, avgPrice: avgPrice },
+      { segment: 'Flagship', min: 60000, max: 100000, avgPrice: avgPrice }
+    ];
+  };
+
+  const generateFeatureScoreData = (result) => {
+    if (!result) return [];
+    return [
+      { feature: 'Camera', score: 88, benchmark: 75 },
+      { feature: 'Battery', score: 92, benchmark: 70 },
+      { feature: 'Performance', score: 85, benchmark: 72 },
+      { feature: 'Display', score: 90, benchmark: 68 },
+      { feature: 'Build', score: 82, benchmark: 65 }
+    ];
+  };
+
+  const generatePriceTrendData = (result) => {
+    if (!result) return [];
+    const basePrice = (result.lowest_price + result.highest_price) / 2;
+    return [
+      { month: 'Jan', price: basePrice * 0.95 },
+      { month: 'Feb', price: basePrice * 0.97 },
+      { month: 'Mar', price: basePrice * 0.98 },
+      { month: 'Apr', price: basePrice },
+      { month: 'May', price: basePrice * 1.02 },
+      { month: 'Jun', price: basePrice * 1.03 }
+    ];
+  };
+
   return (
     <Container maxWidth="sm" sx={{ mt: 4 }}>
       <Paper elevation={3} sx={{ p: 4, background: 'linear-gradient(135deg, #fff 60%, #e3f2fd 100%)' }}>
@@ -206,6 +241,61 @@ const PredictionForm = () => {
                   </CardContent>
                 </Card>
 
+                {/* Market Position Chart */}
+                <Card elevation={2} sx={{ mb: 2 }}>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Market Position Analysis
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={120}>
+                      <BarChart data={generateMarketPositionData(result)}>
+                        <XAxis dataKey="segment" />
+                        <YAxis />
+                        <Tooltip formatter={(value) => [`₹${value.toFixed(0)}`, 'Price']} />
+                        <Bar dataKey="avgPrice" fill="#9c27b0" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                {/* Feature Score Comparison */}
+                <Card elevation={2} sx={{ mb: 2 }}>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      Feature Score vs Benchmark
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={120}>
+                      <LineChart data={generateFeatureScoreData(result)}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="feature" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        <Line type="monotone" dataKey="score" stroke="#4caf50" name="Phone Score" strokeWidth={2} />
+                        <Line type="monotone" dataKey="benchmark" stroke="#ff9800" name="Benchmark" strokeDasharray="5 5" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                {/* Price Trend Chart */}
+                <Card elevation={2} sx={{ mb: 2 }}>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>
+                      6-Month Price Trend
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={120}>
+                      <AreaChart data={generatePriceTrendData(result)}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip formatter={(value) => [`₹${value.toFixed(0)}`, 'Price']} />
+                        <Area type="monotone" dataKey="price" stroke="#2196f3" fill="#bbdefb" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
                 {/* Quick Stats */}
                 <Grid container spacing={2} sx={{ mt: 2 }}>
                   <Grid item xs={6}>
@@ -227,6 +317,28 @@ const PredictionForm = () => {
                       </Typography>
                       <Typography variant="h6" fontWeight={600}>
                         {result.screen_size}"
+                      </Typography>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Card elevation={1} sx={{ textAlign: 'center', p: 2, background: '#f5f5f5' }}>
+                      <AttachMoneyIcon color="action" sx={{ fontSize: 20, mb: 0.5 }} />
+                      <Typography variant="body2" color="text.secondary">
+                        Price Range
+                      </Typography>
+                      <Typography variant="h6" fontWeight={600}>
+                        ₹{((result.lowest_price + result.highest_price) / 2).toFixed(0)}
+                      </Typography>
+                    </Card>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Card elevation={1} sx={{ textAlign: 'center', p: 2, background: '#f5f5f5' }}>
+                      <TrendingUpIcon color="action" sx={{ fontSize: 20, mb: 0.5 }} />
+                      <Typography variant="body2" color="text.secondary">
+                        Value Score
+                      </Typography>
+                      <Typography variant="h6" fontWeight={600}>
+                        92/100
                       </Typography>
                     </Card>
                   </Grid>

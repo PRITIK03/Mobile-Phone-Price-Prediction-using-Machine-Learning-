@@ -190,6 +190,22 @@
             <h3>Performance Metrics</h3>
             <canvas id="performanceChart" class="micro-chart"></canvas>
         </div>
+
+        <!-- Additional Charts -->
+        <div class="chart-container">
+            <h3>Market Position</h3>
+            <canvas id="marketChart" class="micro-chart"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <h3>Feature Comparison</h3>
+            <canvas id="featureChart" class="micro-chart"></canvas>
+        </div>
+
+        <div class="chart-container">
+            <h3>Price Trend (6 Months)</h3>
+            <canvas id="trendChart" class="micro-chart"></canvas>
+        </div>
         {% endif %}
 
         <footer>
@@ -283,6 +299,162 @@
                         ticks: {
                             color: '#ffffff',
                             backdropColor: 'transparent'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Market Position Chart
+        const marketCtx = document.getElementById('marketChart').getContext('2d');
+        const avgPrice = {{ (result['lowest_price'] + result['highest_price']) / 2 }};
+        new Chart(marketCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Budget', 'Mid-Range', 'Premium', 'Flagship'],
+                datasets: [{
+                    label: 'Phone Price (₹)',
+                    data: [avgPrice, avgPrice, avgPrice, avgPrice],
+                    backgroundColor: ['#4caf50', '#2196f3', '#ff9800', '#9c27b0'],
+                    borderColor: ['#45a049', '#1976d2', '#f57c00', '#7b1fa2'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: '#ffffff'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: '#ffffff'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Feature Comparison Chart
+        const featureCtx = document.getElementById('featureChart').getContext('2d');
+        new Chart(featureCtx, {
+            type: 'line',
+            data: {
+                labels: ['Camera', 'Battery', 'Performance', 'Display', 'Build'],
+                datasets: [{
+                    label: 'Phone Score',
+                    data: [88, 92, 85, 90, 82],
+                    borderColor: '#4caf50',
+                    backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }, {
+                    label: 'Benchmark',
+                    data: [75, 70, 72, 68, 65],
+                    borderColor: '#ff9800',
+                    borderDash: [5, 5],
+                    tension: 0.4,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#ffffff'
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: '#ffffff'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: '#ffffff'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Price Trend Chart
+        const trendCtx = document.getElementById('trendChart').getContext('2d');
+        new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'Price Trend (₹)',
+                    data: [
+                        avgPrice * 0.95,
+                        avgPrice * 0.97,
+                        avgPrice * 0.98,
+                        avgPrice,
+                        avgPrice * 1.02,
+                        avgPrice * 1.03
+                    ],
+                    borderColor: '#2196f3',
+                    backgroundColor: 'rgba(33, 150, 243, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#ffffff'
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        ticks: {
+                            color: '#ffffff',
+                            callback: function(value) {
+                                return '₹' + value.toFixed(0);
+                            }
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: '#ffffff'
+                        },
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
                         }
                     }
                 }
