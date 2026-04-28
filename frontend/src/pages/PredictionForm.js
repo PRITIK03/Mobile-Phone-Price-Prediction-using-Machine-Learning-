@@ -6,6 +6,7 @@ import MemoryIcon from '@mui/icons-material/Memory';
 import SmartphoneIcon from '@mui/icons-material/Smartphone';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from 'recharts';
 
 const initialForm = {
