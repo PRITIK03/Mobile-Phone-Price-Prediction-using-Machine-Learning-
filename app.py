@@ -3,7 +3,8 @@ from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 import numpy as np
 import pickle
-from datetime import datetime
+import hashlib
+from datetime import datetime, timedelta
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
@@ -38,6 +39,31 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True, 'pool_recycle'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 import os
 import datetime
+
+# Simple in-memory cache (in production, use Redis)
+prediction_cache = {}
+
+def get_cache_key(battery_size, brand_name, memory_size):
+    """Generate cache key for predictions"""
+    data = f"{battery_size}_{brand_name}_{memory_size}"
+    return hashlib.md5(data.encode()).hexdigest()
+
+def get_cached_prediction(cache_key):
+    """Get cached prediction if available"""
+    if cache_key in prediction_cache:
+        cached_data = prediction_cache[cache_key]
+        # Check if cache is still valid (5 minutes)
+        if datetime.now() - cached_data['timestamp'] < timedelta(minutes=5):
+            return cached_data['prediction']
+    return None
+
+def cache_prediction(cache_key, prediction):
+    """Cache prediction result"""
+    prediction_cache[cache_key] = {
+        'prediction': prediction,
+        'timestamp': datetime.now()
+    }
+
 app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'dev_secret_key_change_in_production')  # Use environment variable in production
 CORS(app)
 db = SQLAlchemy(app)
@@ -136,6 +162,12 @@ def api_predict():
     except (KeyError, ValueError, TypeError):
         return jsonify({"error": "Invalid input format."}), 400
 
+    # Check cache first
+    cache_key = get_cache_key(battery_size, brand_name.strip(), memory_size)
+    cached_result = get_cached_prediction(cache_key)
+    if cached_result:
+        return jsonify({"prediction": cached_result, "cached": True})
+
     # Encode brand_name
     try:
         brand_name_encoded = label_encoder.transform([brand_name.strip()])[0]
@@ -172,7 +204,11 @@ def api_predict():
             "release_date": release_date,
             "screen_size": round(screen_size, 2)
         }
-        return jsonify({"prediction": result})
+        
+        # Cache the result
+        cache_prediction(cache_key, result)
+        
+        return jsonify({"prediction": result, "cached": False})
     except Exception as e:
         print(f"Regressor error: {e}")
         return jsonify({"error": "Prediction failed. Please try again."}), 500
