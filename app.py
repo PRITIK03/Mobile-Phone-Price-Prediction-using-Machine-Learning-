@@ -34,8 +34,30 @@ except FileNotFoundError:
 
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///users.db')
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True, 'pool_recycle': 300}
+# Enhanced database configuration with connection pooling
+database_url = os.environ.get('DATABASE_URL', 'sqlite:///users.db')
+
+if database_url.startswith('sqlite'):
+    # SQLite configuration
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_pre_ping': True,
+        'pool_recycle': 300,
+        'pool_size': 10,
+        'max_overflow': 20,
+        'pool_timeout': 30
+    }
+else:
+    # PostgreSQL/MySQL configuration for production
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_size': 20,           # Number of connections to keep open
+        'max_overflow': 30,        # Additional connections when pool is full
+        'pool_recycle': 3600,     # Recycle connections every hour
+        'pool_pre_ping': True,    # Test connections before use
+        'pool_timeout': 30,        # Timeout for getting connection from pool
+        'echo': False             # Set to True for SQL logging in development
+    }
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 import os
 import datetime
@@ -63,6 +85,24 @@ def cache_prediction(cache_key, prediction):
         'prediction': prediction,
         'timestamp': datetime.now()
     }
+
+def check_database_health():
+    """Check database connection health"""
+    try:
+        # Test database connection
+        db.engine.execute("SELECT 1")
+        return True
+    except Exception as e:
+        print(f"Database health check failed: {e}")
+        return False
+
+@app.before_request
+def before_request():
+    """Check database health before each request"""
+    if not hasattr(app, '_db_health_checked'):
+        if not check_database_health():
+            print("Warning: Database connection issues detected")
+        app._db_health_checked = True
 
 app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'dev_secret_key_change_in_production')  # Use environment variable in production
 CORS(app)
@@ -212,6 +252,20 @@ def api_predict():
     except Exception as e:
         print(f"Regressor error: {e}")
         return jsonify({"error": "Prediction failed. Please try again."}), 500
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Health check endpoint with database status"""
+    db_status = check_database_health()
+    cache_size = len(prediction_cache)
+    
+    return jsonify({
+        'status': 'healthy' if db_status else 'unhealthy',
+        'database': 'connected' if db_status else 'disconnected',
+        'cache_size': cache_size,
+        'models_loaded': all([regressor, classifier, label_encoder]),
+        'timestamp': datetime.now().isoformat()
+    })
 
 @app.route("/", methods=["GET", "POST"])
 def index():
