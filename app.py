@@ -116,6 +116,23 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
 
+# Prediction History model
+class PredictionHistory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Allow anonymous predictions
+    battery_size = db.Column(db.Float, nullable=False)
+    brand_name = db.Column(db.String(50), nullable=False)
+    memory_size = db.Column(db.Float, nullable=False)
+    model_name = db.Column(db.String(100), nullable=False)
+    lowest_price = db.Column(db.Float, nullable=False)
+    highest_price = db.Column(db.Float, nullable=False)
+    release_date = db.Column(db.String(20), nullable=False)
+    screen_size = db.Column(db.Float, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship to user
+    user = db.relationship('User', backref=db.backref('predictions', lazy=True))
+
 # Create tables if not exist
 with app.app_context():
     db.create_all()
@@ -247,6 +264,40 @@ def api_predict():
         
         # Cache the result
         cache_prediction(cache_key, result)
+        
+        # Save prediction to database (optional - allow anonymous predictions)
+        try:
+            # Get user from JWT token if available
+            auth_header = request.headers.get('Authorization')
+            user_id = None
+            if auth_header and auth_header.startswith('Bearer '):
+                try:
+                    from flask_jwt_extended import decode_token
+                    token = auth_header.split(' ')[1]
+                    decoded_token = decode_token(token)
+                    username = decoded_token['sub']
+                    user = User.query.filter_by(username=username).first()
+                    user_id = user.id if user else None
+                except:
+                    pass  # Continue without user if token is invalid
+            
+            # Save prediction history
+            prediction = PredictionHistory(
+                user_id=user_id,
+                battery_size=battery_size,
+                brand_name=brand_name.strip(),
+                memory_size=memory_size,
+                model_name=model_name,
+                lowest_price=lowest_price,
+                highest_price=highest_price,
+                release_date=release_date,
+                screen_size=screen_size
+            )
+            db.session.add(prediction)
+            db.session.commit()
+        except Exception as e:
+            print(f"Failed to save prediction history: {e}")
+            db.session.rollback()
         
         return jsonify({"prediction": result, "cached": False})
     except Exception as e:
