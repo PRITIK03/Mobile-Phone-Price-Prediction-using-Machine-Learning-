@@ -437,6 +437,119 @@ def get_prediction_stats():
         print(f"Error fetching prediction stats: {e}")
         return jsonify({'error': 'Failed to fetch prediction statistics'}), 500
 
+@app.route('/api/compare', methods=['POST'])
+def compare_phones():
+    """Compare multiple phones side by side"""
+    if not all([regressor, classifier, label_encoder]):
+        return jsonify({"error": "Models not loaded. Please check model files."}), 500
+    
+    data = request.get_json()
+    phones = data.get('phones', [])
+    
+    # Validate input
+    if not phones or len(phones) < 2:
+        return jsonify({"error": "Please provide at least 2 phones to compare."}), 400
+    if len(phones) > 5:
+        return jsonify({"error": "Maximum 5 phones can be compared at once."}), 400
+    
+    comparisons = []
+    
+    for phone in phones:
+        try:
+            battery_size = float(phone.get("battery_size"))
+            brand_name = phone.get("brand_name")
+            memory_size = float(phone.get("memory_size"))
+            
+            # Validate input ranges
+            if battery_size <= 0 or battery_size > 10000:
+                return jsonify({"error": f"Battery size must be between 1 and 10000 mAh for phone {phone.get('name', 'unknown')}."}), 400
+            if memory_size <= 0 or memory_size > 512:
+                return jsonify({"error": f"Memory size must be between 1 and 512 GB for phone {phone.get('name', 'unknown')}."}), 400
+            if not brand_name or len(brand_name.strip()) == 0:
+                return jsonify({"error": f"Brand name is required for phone {phone.get('name', 'unknown')}."}), 400
+            
+            # Check cache
+            cache_key = get_cache_key(battery_size, brand_name.strip(), memory_size)
+            cached_result = get_cached_prediction(cache_key)
+            
+            if cached_result:
+                comparison = {
+                    'name': phone.get('name', f'Phone {len(comparisons) + 1}'),
+                    'prediction': cached_result,
+                    'cached': True
+                }
+            else:
+                # Encode brand_name
+                try:
+                    brand_name_encoded = label_encoder.transform([brand_name.strip()])[0]
+                except ValueError:
+                    return jsonify({"error": f"Brand name '{brand_name}' not recognized for phone {phone.get('name', 'unknown')}."}), 400
+                
+                X_input = np.array([[battery_size, brand_name_encoded, memory_size]])
+                
+                try:
+                    model_name_encoded = classifier.predict(X_input)[0]
+                    model_name = label_encoder.inverse_transform([model_name_encoded])[0]
+                except Exception as e:
+                    print(f"Classifier error: {e}")
+                    model_name = "Unknown (unseen in training data)"
+                
+                try:
+                    y_pred = regressor.predict(X_input)
+                    lowest_price = max(0, y_pred[0][0])
+                    highest_price = max(0, y_pred[0][1])
+                    release_date = y_pred[0][2]
+                    screen_size = max(1, min(10, y_pred[0][3]))
+                    
+                    try:
+                        release_date = datetime.utcfromtimestamp(release_date).strftime('%Y-%m-%d')
+                    except (ValueError, OSError):
+                        release_date = datetime.now().strftime('%Y-%m-%d')
+                    
+                    result = {
+                        "model_name": model_name,
+                        "brand_name": brand_name.strip(),
+                        "lowest_price": round(lowest_price, 2),
+                        "highest_price": round(highest_price, 2),
+                        "release_date": release_date,
+                        "screen_size": round(screen_size, 2)
+                    }
+                    
+                    # Cache the result
+                    cache_prediction(cache_key, result)
+                    
+                    comparison = {
+                        'name': phone.get('name', f'Phone {len(comparisons) + 1}'),
+                        'prediction': result,
+                        'cached': False
+                    }
+                except Exception as e:
+                    print(f"Regressor error: {e}")
+                    return jsonify({"error": f"Prediction failed for phone {phone.get('name', 'unknown')}."}), 500
+            
+            comparisons.append(comparison)
+            
+        except (KeyError, ValueError, TypeError) as e:
+            return jsonify({"error": f"Invalid input format for phone {phone.get('name', 'unknown')}: {str(e)}"}), 400
+    
+    # Calculate comparison metrics
+    comparison_metrics = {
+        'cheapest': min(comparisons, key=lambda x: x['prediction']['lowest_price']),
+        'most_expensive': max(comparisons, key=lambda x: x['prediction']['highest_price']),
+        'best_battery': max(comparisons, key=lambda x: x['prediction']['brand_name']),
+        'largest_screen': max(comparisons, key=lambda x: x['prediction']['screen_size'])
+    }
+    
+    return jsonify({
+        'comparisons': comparisons,
+        'metrics': {
+            'cheapest': comparison_metrics['cheapest']['name'],
+            'most_expensive': comparison_metrics['most_expensive']['name'],
+            'largest_screen': comparison_metrics['largest_screen']['name']
+        },
+        'count': len(comparisons)
+    })
+
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
