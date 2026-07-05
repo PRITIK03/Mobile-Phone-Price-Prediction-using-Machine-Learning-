@@ -63,7 +63,7 @@ else:
         'echo': False             # Set to True for SQL logging in development
     }
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-import datetime
+# NOTE: we import `datetime` class and `timedelta` above; avoid importing the module name to prevent shadowing
 
 # Simple in-memory cache (in production, use Redis)
 prediction_cache = {}
@@ -198,7 +198,7 @@ def login():
     # Reset attempts on successful login
     login._attempts = 0
     
-    access_token = create_access_token(identity=username, expires_delta=datetime.timedelta(hours=1))
+    access_token = create_access_token(identity=username, expires_delta=timedelta(hours=1))
     return jsonify({'access_token': access_token}), 200
 @app.route("/api/predict", methods=["POST"])
 def api_predict():
@@ -478,6 +478,8 @@ def compare_phones():
             if cached_result:
                 comparison = {
                     'name': phone.get('name', f'Phone {len(comparisons) + 1}'),
+                    'battery_size': battery_size,
+                    'memory_size': memory_size,
                     'prediction': cached_result,
                     'cached': True
                 }
@@ -523,6 +525,8 @@ def compare_phones():
                     
                     comparison = {
                         'name': phone.get('name', f'Phone {len(comparisons) + 1}'),
+                        'battery_size': battery_size,
+                        'memory_size': memory_size,
                         'prediction': result,
                         'cached': False
                     }
@@ -539,7 +543,7 @@ def compare_phones():
     comparison_metrics = {
         'cheapest': min(comparisons, key=lambda x: x['prediction']['lowest_price']),
         'most_expensive': max(comparisons, key=lambda x: x['prediction']['highest_price']),
-        'best_battery': max(comparisons, key=lambda x: x['prediction']['brand_name']),
+        'best_battery': max(comparisons, key=lambda x: x.get('battery_size', 0)),
         'largest_screen': max(comparisons, key=lambda x: x['prediction']['screen_size'])
     }
     
@@ -548,6 +552,7 @@ def compare_phones():
         'metrics': {
             'cheapest': comparison_metrics['cheapest']['name'],
             'most_expensive': comparison_metrics['most_expensive']['name'],
+            'best_battery': comparison_metrics['best_battery']['name'],
             'largest_screen': comparison_metrics['largest_screen']['name']
         },
         'count': len(comparisons)
