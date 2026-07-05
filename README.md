@@ -87,6 +87,24 @@ The React app will run at `http://localhost:3000/` and communicate with the Flas
 4. Access the **Dashboard** (after login) for model info (future: metrics, charts).
 5. (Optional) Extend the app to store and display real prediction history per user.
 
+### Mock mode (useful when model files are missing)
+
+If you don't have the trained model files in `models/`, the backend will run in a lightweight mock mode that produces deterministic, plausible predictions for testing. To force mock mode set the environment variable `MOCK_MODE=1`. To disable mock mode and require real models set `MOCK_MODE=0`.
+
+Example (PowerShell):
+
+```powershell
+setx MOCK_MODE 1
+python app.py
+```
+
+Batch prediction example (uses sample CSV at `examples/phones_sample.csv`):
+
+```powershell
+# start the server first
+curl -F "file=@examples/phones_sample.csv" http://127.0.0.1:5000/api/predict/batch -o predictions.csv
+```
+
 ---
 
 ## API Endpoints (Flask)

@@ -68,6 +68,30 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Simple in-memory cache (in production, use Redis)
 prediction_cache = {}
 
+# Determine mock mode: enable if models missing or env var set
+models_loaded = all([regressor, classifier, label_encoder])
+MOCK_MODE = os.environ.get('MOCK_MODE', '1' if not models_loaded else '0') == '1'
+
+def mock_predict_single(battery_size, brand_name, memory_size):
+    """Return a deterministic mock prediction when real models aren't available."""
+    # Simple heuristic to produce plausible numbers
+    base = 200 + (battery_size * 0.5) + (memory_size * 20)
+    lowest_price = max(100, base)
+    highest_price = lowest_price * 1.25
+    # release_date as current timestamp
+    release_date = int(datetime.now().timestamp())
+    # screen size heuristic
+    screen_size = round(4.7 + min(3.0, (memory_size / 256.0) * 2.5), 2)
+    model_name = f"{brand_name.strip()} Model {int(memory_size)}GB"
+    return {
+        'model_name': model_name,
+        'brand_name': brand_name.strip(),
+        'lowest_price': round(lowest_price, 2),
+        'highest_price': round(highest_price, 2),
+        'release_date': datetime.utcfromtimestamp(release_date).strftime('%Y-%m-%d'),
+        'screen_size': screen_size
+    }
+
 def get_cache_key(battery_size, brand_name, memory_size):
     """Generate cache key for predictions"""
     data = f"{battery_size}_{brand_name}_{memory_size}"
@@ -202,8 +226,8 @@ def login():
     return jsonify({'access_token': access_token}), 200
 @app.route("/api/predict", methods=["POST"])
 def api_predict():
-    if not all([regressor, classifier, label_encoder]):
-        return jsonify({"error": "Models not loaded. Please check model files."}), 500
+    if not models_loaded and not MOCK_MODE:
+        return jsonify({"error": "Models not loaded. Please check model files or enable MOCK_MODE."}), 500
     
     data = request.get_json()
     try:
@@ -227,6 +251,11 @@ def api_predict():
     cached_result = get_cached_prediction(cache_key)
     if cached_result:
         return jsonify({"prediction": cached_result, "cached": True})
+    # If mock mode, produce mock result
+    if not models_loaded and MOCK_MODE:
+        result = mock_predict_single(battery_size, brand_name, memory_size)
+        cache_prediction(cache_key, result)
+        return jsonify({"prediction": result, "cached": False})
 
     # Encode brand_name
     try:
@@ -443,8 +472,8 @@ def get_prediction_stats():
 @app.route('/api/compare', methods=['POST'])
 def compare_phones():
     """Compare multiple phones side by side"""
-    if not all([regressor, classifier, label_encoder]):
-        return jsonify({"error": "Models not loaded. Please check model files."}), 500
+    if not models_loaded and not MOCK_MODE:
+        return jsonify({"error": "Models not loaded. Please check model files or enable MOCK_MODE."}), 500
     
     data = request.get_json()
     phones = data.get('phones', [])
@@ -564,8 +593,8 @@ def api_predict_batch():
     """Accept a CSV file upload with columns: battery_size, brand_name, memory_size
     Returns a CSV file with predictions appended: model_name, lowest_price, highest_price, release_date, screen_size
     """
-    if not all([regressor, classifier, label_encoder]):
-        return jsonify({"error": "Models not loaded. Please check model files."}), 500
+    if not models_loaded and not MOCK_MODE:
+        return jsonify({"error": "Models not loaded. Please check model files or enable MOCK_MODE."}), 500
 
     # Accept multipart file upload
     uploaded_file = request.files.get('file')
