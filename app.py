@@ -1,5 +1,5 @@
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file, make_response
 from flask_cors import CORS
 import numpy as np
 import pickle
@@ -8,6 +8,10 @@ from datetime import datetime, timedelta
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+import os
+import io
+import pandas as pd
+import csv
 
 # Load the trained models and label encoder
 try:
@@ -59,7 +63,6 @@ else:
         'echo': False             # Set to True for SQL logging in development
     }
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-import os
 import datetime
 
 # Simple in-memory cache (in production, use Redis)
@@ -549,6 +552,134 @@ def compare_phones():
         },
         'count': len(comparisons)
     })
+
+
+@app.route('/api/predict/batch', methods=['POST'])
+def api_predict_batch():
+    """Accept a CSV file upload with columns: battery_size, brand_name, memory_size
+    Returns a CSV file with predictions appended: model_name, lowest_price, highest_price, release_date, screen_size
+    """
+    if not all([regressor, classifier, label_encoder]):
+        return jsonify({"error": "Models not loaded. Please check model files."}), 500
+
+    # Accept multipart file upload
+    uploaded_file = request.files.get('file')
+    if not uploaded_file:
+        return jsonify({"error": "No file uploaded. Please upload a CSV file under field 'file'."}), 400
+
+    try:
+        df = pd.read_csv(uploaded_file)
+    except Exception as e:
+        return jsonify({"error": f"Failed to read CSV: {e}"}), 400
+
+    # Normalize column names
+    cols = {c.lower(): c for c in df.columns}
+    required = ['battery_size', 'brand_name', 'memory_size']
+    for r in required:
+        if r not in cols:
+            return jsonify({"error": f"Missing required column: {r}"}), 400
+
+    # Prepare output rows
+    output_rows = []
+
+    for idx, row in df.iterrows():
+        try:
+            battery_size = float(row[cols['battery_size']])
+            brand_name = str(row[cols['brand_name']])
+            memory_size = float(row[cols['memory_size']])
+
+            # basic validation
+            if battery_size <= 0 or battery_size > 10000:
+                raise ValueError('battery_size out of range')
+            if memory_size <= 0 or memory_size > 512:
+                raise ValueError('memory_size out of range')
+
+            # Encode brand
+            try:
+                brand_name_encoded = label_encoder.transform([brand_name.strip()])[0]
+            except Exception:
+                model_name = 'Unknown (brand not recognized)'
+                result = {
+                    'model_name': model_name,
+                    'brand_name': brand_name.strip(),
+                    'lowest_price': None,
+                    'highest_price': None,
+                    'release_date': None,
+                    'screen_size': None,
+                    'error': 'brand not recognized'
+                }
+                output_rows.append({**row.to_dict(), **result})
+                continue
+
+            X_input = np.array([[battery_size, brand_name_encoded, memory_size]])
+
+            try:
+                model_name_encoded = classifier.predict(X_input)[0]
+                model_name = label_encoder.inverse_transform([model_name_encoded])[0]
+            except Exception:
+                model_name = 'Unknown (classifier error)'
+
+            y_pred = regressor.predict(X_input)
+            lowest_price = max(0, y_pred[0][0])
+            highest_price = max(0, y_pred[0][1])
+            release_date = y_pred[0][2]
+            screen_size = max(1, min(10, y_pred[0][3]))
+            try:
+                release_date = datetime.utcfromtimestamp(release_date).strftime('%Y-%m-%d')
+            except Exception:
+                release_date = None
+
+            result = {
+                'model_name': model_name,
+                'brand_name': brand_name.strip(),
+                'lowest_price': round(lowest_price, 2),
+                'highest_price': round(highest_price, 2),
+                'release_date': release_date,
+                'screen_size': round(screen_size, 2),
+                'error': None
+            }
+
+            # Save history (anonymous)
+            try:
+                prediction = PredictionHistory(
+                    user_id=None,
+                    battery_size=battery_size,
+                    brand_name=brand_name.strip(),
+                    memory_size=memory_size,
+                    model_name=model_name,
+                    lowest_price=lowest_price,
+                    highest_price=highest_price,
+                    release_date=release_date or '',
+                    screen_size=screen_size
+                )
+                db.session.add(prediction)
+                # commit at the end (bulk)
+            except Exception as e:
+                print(f"Failed to queue prediction history: {e}")
+
+            output_rows.append({**row.to_dict(), **result})
+
+        except Exception as e:
+            output_rows.append({**row.to_dict(), 'model_name': None, 'lowest_price': None, 'highest_price': None, 'release_date': None, 'screen_size': None, 'error': str(e)})
+
+    # Try to commit any queued history entries
+    try:
+        db.session.commit()
+    except Exception as e:
+        print(f"Failed to commit batch prediction history: {e}")
+        db.session.rollback()
+
+    out_df = pd.DataFrame(output_rows)
+
+    # Prepare CSV for download
+    csv_buffer = io.StringIO()
+    out_df.to_csv(csv_buffer, index=False)
+    csv_bytes = csv_buffer.getvalue().encode('utf-8')
+    buf = io.BytesIO(csv_bytes)
+    buf.seek(0)
+
+    filename = f"predictions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    return send_file(buf, mimetype='text/csv', as_attachment=True, download_name=filename)
 
 @app.route("/", methods=["GET", "POST"])
 def index():

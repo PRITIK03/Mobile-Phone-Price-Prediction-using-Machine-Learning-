@@ -150,6 +150,14 @@
             <button type="submit">Get Recommendation</button>
         </form>
 
+        <!-- Batch CSV upload form -->
+        <form id="batchForm" style="margin-top:20px; text-align:left;" enctype="multipart/form-data">
+            <label for="csv_file">Upload CSV for Batch Predictions (columns: battery_size, brand_name, memory_size):</label>
+            <input type="file" id="csv_file" name="file" accept=".csv" required>
+            <button type="submit">Upload & Predict (Batch)</button>
+        </form>
+        <div id="batchResult" style="margin-top:10px; color: #fff;"></div>
+
         {% if result %}
         <!-- Display the result after the form is submitted -->
         <div class="result">
@@ -461,6 +469,58 @@
             }
         });
         {% endif %}
+    </script>
+    <script>
+        // Batch upload handling
+        const batchForm = document.getElementById('batchForm');
+        if (batchForm) {
+            batchForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const fileInput = document.getElementById('csv_file');
+                const statusDiv = document.getElementById('batchResult');
+                if (!fileInput.files.length) {
+                    statusDiv.textContent = 'Please select a CSV file.';
+                    return;
+                }
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+
+                statusDiv.textContent = 'Uploading and predicting...';
+
+                try {
+                    const res = await fetch('/api/predict/batch', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        statusDiv.textContent = 'Error: ' + (err.error || res.statusText);
+                        return;
+                    }
+
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    // Try to extract filename from Content-Disposition
+                    const cd = res.headers.get('Content-Disposition');
+                    let fname = 'predictions.csv';
+                    if (cd) {
+                        const match = cd.match(/filename\*=UTF-8''([^;\n]+)/) || cd.match(/filename="?([^";\n]+)"?/);
+                        if (match) fname = decodeURIComponent(match[1]);
+                    }
+                    a.download = fname;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    statusDiv.textContent = 'Batch predictions completed. Download started.';
+                } catch (err) {
+                    statusDiv.textContent = 'Batch prediction failed: ' + err;
+                }
+            });
+        }
     </script>
 </body>
 </html>
