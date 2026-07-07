@@ -1,125 +1,20 @@
-
-from flask import Flask, render_template, request, jsonify, send_file, make_response
-from flask_cors import CORS
-import numpy as np
-import pickle
-import hashlib
-from datetime import datetime, timedelta
-from flask_sqlalchemy import SQLAlchemy
-from flask_bcrypt import Bcrypt
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
-import os
-import io
-import pandas as pd
-import csv
-from predict_utils import get_cache_key, get_cached_prediction, cache_prediction, mock_predict_single, prediction_cache
-
-# Load the trained models and label encoder
-try:
-    with open("models/regressor.pkl", "rb") as f:
-        regressor = pickle.load(f)
-except FileNotFoundError:
-    print("Warning: regressor.pkl not found. Please ensure model files are in the models directory.")
-    regressor = None
-
-try:
-    with open("models/classifier.pkl", "rb") as f:
-        classifier = pickle.load(f)
-except FileNotFoundError:
-    print("Warning: classifier.pkl not found. Please ensure model files are in the models directory.")
-    classifier = None
-
-try:
-    with open("models/label_encoder.pkl", "rb") as f:
-        label_encoder = pickle.load(f)
-except FileNotFoundError:
-    print("Warning: label_encoder.pkl not found. Please ensure model files are in the models directory.")
-    label_encoder = None
-
-
-
-app = Flask(__name__)
-# Enhanced database configuration with connection pooling
-database_url = os.environ.get('DATABASE_URL', 'sqlite:///users.db')
-
-if database_url.startswith('sqlite'):
-    # SQLite configuration
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'pool_pre_ping': True,
-        'pool_recycle': 300,
-        'pool_size': 10,
-        'max_overflow': 20,
-        'pool_timeout': 30
-    }
-else:
-    # PostgreSQL/MySQL configuration for production
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'pool_size': 20,           # Number of connections to keep open
-        'max_overflow': 30,        # Additional connections when pool is full
-        'pool_recycle': 3600,     # Recycle connections every hour
-        'pool_pre_ping': True,    # Test connections before use
-        'pool_timeout': 30,        # Timeout for getting connection from pool
-        'echo': False             # Set to True for SQL logging in development
-    }
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# NOTE: we import `datetime` class and `timedelta` above; avoid importing the module name to prevent shadowing
-
-# Determine mock mode: enable if models missing or env var set
-models_loaded = all([regressor, classifier, label_encoder])
-MOCK_MODE = os.environ.get('MOCK_MODE', '1' if not models_loaded else '0') == '1'
-
-def check_database_health():
-    """Check database connection health"""
-    try:
-        # Test database connection
-        db.engine.execute("SELECT 1")
-        return True
-    except Exception as e:
-        print(f"Database health check failed: {e}")
-        return False
-
-@app.before_request
-def before_request():
-    """Check database health before each request"""
-    if not hasattr(app, '_db_health_checked'):
-        if not check_database_health():
-            print("Warning: Database connection issues detected")
-        app._db_health_checked = True
-
-app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'dev_secret_key_change_in_production')  # Use environment variable in production
-app.config['TOKEN_EXPIRES_DELTA'] = timedelta(hours=1)
-
-# Initialize extensions (moved to extensions.py to avoid circular imports)
-from extensions import db, bcrypt, jwt, cors
-cors.init_app(app)
-db.init_app(app)
-bcrypt.init_app(app)
-jwt.init_app(app)
-
-# Import models after db is initialized
+from flask import Blueprint, request, jsonify, current_app, send_file, render_template
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
+from extensions import db, bcrypt, jwt
 from models import User, PredictionHistory
+from predict_utils import get_cache_key, get_cached_prediction, cache_prediction, mock_predict_single, prediction_cache
+import numpy as np
+import pandas as pd
+import io
+from datetime import datetime
 
-# Create tables if not exist
-with app.app_context():
-    db.create_all()
+api_bp = Blueprint('api', __name__)
 
-# Attach loaded models and flags to app for blueprint access
-app.regressor = regressor
-app.classifier = classifier
-app.label_encoder = label_encoder
-app.models_loaded = models_loaded
-app.MOCK_MODE = MOCK_MODE
-
-# Registration endpoint
-@app.route('/api/register', methods=['POST'])
+@api_bp.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
     username = data.get('username', '').strip()
     password = data.get('password', '')
-    
-    # Validate input
     if not username or not password:
         return jsonify({'error': 'Username and password required.'}), 400
     if len(username) < 3 or len(username) > 50:
@@ -128,126 +23,99 @@ def register():
         return jsonify({'error': 'Password must be at least 8 characters.'}), 400
     if not username.replace('_', '').replace('-', '').isalnum():
         return jsonify({'error': 'Username can only contain letters, numbers, underscores, and hyphens.'}), 400
-    
-    # Check if user exists
     if User.query.filter_by(username=username).first():
         return jsonify({'error': 'Username already exists.'}), 409
-    
     try:
         hashed_pw = bcrypt.generate_password_hash(password).decode('utf-8')
         user = User(username=username, password=hashed_pw)
         db.session.add(user)
         db.session.commit()
         return jsonify({'message': 'User registered successfully.'}), 201
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         return jsonify({'error': 'Registration failed. Please try again.'}), 500
 
-# Login endpoint
-@app.route('/api/login', methods=['POST'])
+@api_bp.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
     username = data.get('username', '').strip()
     password = data.get('password', '')
-    
-    # Validate input
     if not username or not password:
         return jsonify({'error': 'Username and password required.'}), 400
-    
-    # Rate limiting check (simple implementation)
-    # In production, use Redis or database for proper rate limiting
     if hasattr(login, '_attempts'):
         login._attempts = getattr(login, '_attempts', 0) + 1
         if login._attempts > 5:
             return jsonify({'error': 'Too many failed attempts. Please try again later.'}), 429
     else:
         login._attempts = 1
-    
     user = User.query.filter_by(username=username).first()
     if not user or not bcrypt.check_password_hash(user.password, password):
         return jsonify({'error': 'Invalid credentials.'}), 401
-    
-    # Reset attempts on successful login
     login._attempts = 0
-    
-    access_token = create_access_token(identity=username, expires_delta=timedelta(hours=1))
+    access_token = create_access_token(identity=username, expires_delta=current_app.config.get('TOKEN_EXPIRES_DELTA'))
     return jsonify({'access_token': access_token}), 200
-@app.route("/api/predict", methods=["POST"])
+
+@api_bp.route('/predict', methods=['POST'])
 def api_predict():
+    models_loaded = getattr(current_app, 'models_loaded', False)
+    MOCK_MODE = getattr(current_app, 'MOCK_MODE', False)
+    regressor = getattr(current_app, 'regressor', None)
+    classifier = getattr(current_app, 'classifier', None)
+    label_encoder = getattr(current_app, 'label_encoder', None)
+
     if not models_loaded and not MOCK_MODE:
         return jsonify({"error": "Models not loaded. Please check model files or enable MOCK_MODE."}), 500
-    
     data = request.get_json()
     try:
         battery_size = float(data["battery_size"])
         brand_name = data["brand_name"]
         memory_size = float(data["memory_size"])
-        
-        # Validate input ranges
         if battery_size <= 0 or battery_size > 10000:
             return jsonify({"error": "Battery size must be between 1 and 10000 mAh."}), 400
         if memory_size <= 0 or memory_size > 512:
             return jsonify({"error": "Memory size must be between 1 and 512 GB."}), 400
         if not brand_name or len(brand_name.strip()) == 0:
             return jsonify({"error": "Brand name is required."}), 400
-            
     except (KeyError, ValueError, TypeError):
         return jsonify({"error": "Invalid input format."}), 400
-
-    # Check cache first
     cache_key = get_cache_key(battery_size, brand_name.strip(), memory_size)
     cached_result = get_cached_prediction(cache_key)
     if cached_result:
         return jsonify({"prediction": cached_result, "cached": True})
-    # If mock mode, produce mock result
     if not models_loaded and MOCK_MODE:
         result = mock_predict_single(battery_size, brand_name, memory_size)
         cache_prediction(cache_key, result)
         return jsonify({"prediction": result, "cached": False})
-
-    # Encode brand_name
     try:
         brand_name_encoded = label_encoder.transform([brand_name.strip()])[0]
     except ValueError:
         return jsonify({"error": "Brand name not recognized! Try: Samsung, Apple, Xiaomi, OnePlus, etc."}), 400
-
     X_input = np.array([[battery_size, brand_name_encoded, memory_size]])
-
     try:
         model_name_encoded = classifier.predict(X_input)[0]
         model_name = label_encoder.inverse_transform([model_name_encoded])[0]
-    except Exception as e:
-        print(f"Classifier error: {e}")
+    except Exception:
         model_name = "Unknown (unseen in training data)"
-
     try:
         y_pred = regressor.predict(X_input)
-        lowest_price = max(0, y_pred[0][0])  # Ensure non-negative
-        highest_price = max(0, y_pred[0][1])  # Ensure non-negative
+        lowest_price = max(0, y_pred[0][0])
+        highest_price = max(0, y_pred[0][1])
         release_date = y_pred[0][2]
-        screen_size = max(1, min(10, y_pred[0][3]))  # Reasonable screen size range
-        
-        # Convert release date from Unix timestamp to readable date
+        screen_size = max(1, min(10, y_pred[0][3]))
         try:
             release_date = datetime.utcfromtimestamp(release_date).strftime('%Y-%m-%d')
         except (ValueError, OSError):
-            release_date = datetime.now().strftime('%Y-%m-%d')  # Fallback to current date
-
+            release_date = datetime.now().strftime('%Y-%m-%d')
         result = {
             "model_name": model_name,
-            "brand_name": brand_name.strip(),  # Include brand name for frontend
+            "brand_name": brand_name.strip(),
             "lowest_price": round(lowest_price, 2),
             "highest_price": round(highest_price, 2),
             "release_date": release_date,
             "screen_size": round(screen_size, 2)
         }
-        
-        # Cache the result
         cache_prediction(cache_key, result)
-        
-        # Save prediction to database (optional - allow anonymous predictions)
         try:
-            # Get user from JWT token if available
             auth_header = request.headers.get('Authorization')
             user_id = None
             if auth_header and auth_header.startswith('Bearer '):
@@ -259,9 +127,7 @@ def api_predict():
                     user = User.query.filter_by(username=username).first()
                     user_id = user.id if user else None
                 except:
-                    pass  # Continue without user if token is invalid
-            
-            # Save prediction history
+                    pass
             prediction = PredictionHistory(
                 user_id=user_id,
                 battery_size=battery_size,
@@ -278,36 +144,42 @@ def api_predict():
         except Exception as e:
             print(f"Failed to save prediction history: {e}")
             db.session.rollback()
-        
         return jsonify({"prediction": result, "cached": False})
     except Exception as e:
         print(f"Regressor error: {e}")
         return jsonify({"error": "Prediction failed. Please try again."}), 500
 
-from routes import api_bp
-app.register_blueprint(api_bp, url_prefix='/api')
+@api_bp.route('/health', methods=['GET'])
+def health_check():
+    db_status = True
+    try:
+        db.engine.execute("SELECT 1")
+    except Exception:
+        db_status = False
+    cache_size = len(prediction_cache)
+    models_loaded = getattr(current_app, 'models_loaded', False)
+    return jsonify({
+        'status': 'healthy' if db_status else 'unhealthy',
+        'database': 'connected' if db_status else 'disconnected',
+        'cache_size': cache_size,
+        'models_loaded': models_loaded,
+        'timestamp': datetime.now().isoformat()
+    })
 
-@app.route('/api/predictions/history', methods=['GET'])
+@api_bp.route('/predictions/history', methods=['GET'])
 @jwt_required()
 def get_prediction_history():
-    """Get user's prediction history"""
     try:
         username = get_jwt_identity()
         user = User.query.filter_by(username=username).first()
-        
         if not user:
             return jsonify({'error': 'User not found'}), 404
-        
-        # Get pagination parameters
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
-        limit = min(per_page, 50)  # Max 50 records per page
-        
-        # Get user's predictions
+        limit = min(per_page, 50)
         predictions = PredictionHistory.query.filter_by(user_id=user.id)\
             .order_by(PredictionHistory.created_at.desc())\
             .paginate(page=page, per_page=limit, error_out=False)
-        
         history_data = []
         for prediction in predictions.items:
             history_data.append({
@@ -322,7 +194,6 @@ def get_prediction_history():
                 'screen_size': prediction.screen_size,
                 'created_at': prediction.created_at.isoformat()
             })
-        
         return jsonify({
             'predictions': history_data,
             'pagination': {
@@ -334,51 +205,38 @@ def get_prediction_history():
                 'has_prev': predictions.has_prev
             }
         })
-        
     except Exception as e:
         print(f"Error fetching prediction history: {e}")
         return jsonify({'error': 'Failed to fetch prediction history'}), 500
 
-@app.route('/api/predictions/<int:prediction_id>', methods=['DELETE'])
+@api_bp.route('/predictions/<int:prediction_id>', methods=['DELETE'])
 @jwt_required()
 def delete_prediction(prediction_id):
-    """Delete a specific prediction from history"""
     try:
         username = get_jwt_identity()
         user = User.query.filter_by(username=username).first()
-        
         if not user:
             return jsonify({'error': 'User not found'}), 404
-        
         prediction = PredictionHistory.query.filter_by(id=prediction_id, user_id=user.id).first()
         if not prediction:
             return jsonify({'error': 'Prediction not found'}), 404
-        
         db.session.delete(prediction)
         db.session.commit()
-        
         return jsonify({'message': 'Prediction deleted successfully'})
-        
     except Exception as e:
         print(f"Error deleting prediction: {e}")
         db.session.rollback()
         return jsonify({'error': 'Failed to delete prediction'}), 500
 
-@app.route('/api/predictions/stats', methods=['GET'])
+@api_bp.route('/predictions/stats', methods=['GET'])
 @jwt_required()
 def get_prediction_stats():
-    """Get user's prediction statistics"""
     try:
         username = get_jwt_identity()
         user = User.query.filter_by(username=username).first()
-        
         if not user:
             return jsonify({'error': 'User not found'}), 404
-        
-        # Get statistics
         total_predictions = PredictionHistory.query.filter_by(user_id=user.id).count()
-        
-        # Brand preferences
         brand_stats = db.session.query(
             PredictionHistory.brand_name,
             db.func.count(PredictionHistory.id).label('count')
@@ -386,13 +244,10 @@ def get_prediction_stats():
          .group_by(PredictionHistory.brand_name)\
          .order_by(db.desc('count'))\
          .limit(5).all()
-        
-        # Average price ranges
         avg_low = db.session.query(db.func.avg(PredictionHistory.lowest_price))\
                           .filter_by(user_id=user.id).scalar() or 0
         avg_high = db.session.query(db.func.avg(PredictionHistory.highest_price))\
                            .filter_by(user_id=user.id).scalar() or 0
-        
         return jsonify({
             'total_predictions': total_predictions,
             'brand_preferences': [{'brand': brand, 'count': count} for brand, count in brand_stats],
@@ -401,46 +256,39 @@ def get_prediction_stats():
                 'highest': round(avg_high, 2)
             }
         })
-        
     except Exception as e:
         print(f"Error fetching prediction stats: {e}")
         return jsonify({'error': 'Failed to fetch prediction statistics'}), 500
 
-@app.route('/api/compare', methods=['POST'])
+@api_bp.route('/compare', methods=['POST'])
 def compare_phones():
-    """Compare multiple phones side by side"""
+    models_loaded = getattr(current_app, 'models_loaded', False)
+    MOCK_MODE = getattr(current_app, 'MOCK_MODE', False)
+    regressor = getattr(current_app, 'regressor', None)
+    classifier = getattr(current_app, 'classifier', None)
+    label_encoder = getattr(current_app, 'label_encoder', None)
     if not models_loaded and not MOCK_MODE:
         return jsonify({"error": "Models not loaded. Please check model files or enable MOCK_MODE."}), 500
-    
     data = request.get_json()
     phones = data.get('phones', [])
-    
-    # Validate input
     if not phones or len(phones) < 2:
         return jsonify({"error": "Please provide at least 2 phones to compare."}), 400
     if len(phones) > 5:
         return jsonify({"error": "Maximum 5 phones can be compared at once."}), 400
-    
     comparisons = []
-    
     for phone in phones:
         try:
             battery_size = float(phone.get("battery_size"))
             brand_name = phone.get("brand_name")
             memory_size = float(phone.get("memory_size"))
-            
-            # Validate input ranges
             if battery_size <= 0 or battery_size > 10000:
                 return jsonify({"error": f"Battery size must be between 1 and 10000 mAh for phone {phone.get('name', 'unknown')}."}), 400
             if memory_size <= 0 or memory_size > 512:
                 return jsonify({"error": f"Memory size must be between 1 and 512 GB for phone {phone.get('name', 'unknown')}."}), 400
             if not brand_name or len(brand_name.strip()) == 0:
                 return jsonify({"error": f"Brand name is required for phone {phone.get('name', 'unknown')}."}), 400
-            
-            # Check cache
             cache_key = get_cache_key(battery_size, brand_name.strip(), memory_size)
             cached_result = get_cached_prediction(cache_key)
-            
             if cached_result:
                 comparison = {
                     'name': phone.get('name', f'Phone {len(comparisons) + 1}'),
@@ -450,33 +298,27 @@ def compare_phones():
                     'cached': True
                 }
             else:
-                # Encode brand_name
                 try:
                     brand_name_encoded = label_encoder.transform([brand_name.strip()])[0]
                 except ValueError:
                     return jsonify({"error": f"Brand name '{brand_name}' not recognized for phone {phone.get('name', 'unknown')}."}), 400
-                
                 X_input = np.array([[battery_size, brand_name_encoded, memory_size]])
-                
                 try:
                     model_name_encoded = classifier.predict(X_input)[0]
                     model_name = label_encoder.inverse_transform([model_name_encoded])[0]
                 except Exception as e:
                     print(f"Classifier error: {e}")
                     model_name = "Unknown (unseen in training data)"
-                
                 try:
                     y_pred = regressor.predict(X_input)
                     lowest_price = max(0, y_pred[0][0])
                     highest_price = max(0, y_pred[0][1])
                     release_date = y_pred[0][2]
                     screen_size = max(1, min(10, y_pred[0][3]))
-                    
                     try:
                         release_date = datetime.utcfromtimestamp(release_date).strftime('%Y-%m-%d')
                     except (ValueError, OSError):
                         release_date = datetime.now().strftime('%Y-%m-%d')
-                    
                     result = {
                         "model_name": model_name,
                         "brand_name": brand_name.strip(),
@@ -485,10 +327,7 @@ def compare_phones():
                         "release_date": release_date,
                         "screen_size": round(screen_size, 2)
                     }
-                    
-                    # Cache the result
                     cache_prediction(cache_key, result)
-                    
                     comparison = {
                         'name': phone.get('name', f'Phone {len(comparisons) + 1}'),
                         'battery_size': battery_size,
@@ -499,20 +338,15 @@ def compare_phones():
                 except Exception as e:
                     print(f"Regressor error: {e}")
                     return jsonify({"error": f"Prediction failed for phone {phone.get('name', 'unknown')}."}), 500
-            
             comparisons.append(comparison)
-            
         except (KeyError, ValueError, TypeError) as e:
             return jsonify({"error": f"Invalid input format for phone {phone.get('name', 'unknown')}: {str(e)}"}), 400
-    
-    # Calculate comparison metrics
     comparison_metrics = {
         'cheapest': min(comparisons, key=lambda x: x['prediction']['lowest_price']),
         'most_expensive': max(comparisons, key=lambda x: x['prediction']['highest_price']),
         'best_battery': max(comparisons, key=lambda x: x.get('battery_size', 0)),
         'largest_screen': max(comparisons, key=lambda x: x['prediction']['screen_size'])
     }
-    
     return jsonify({
         'comparisons': comparisons,
         'metrics': {
@@ -524,73 +358,56 @@ def compare_phones():
         'count': len(comparisons)
     })
 
-
-@app.route('/api/predict/batch', methods=['POST'])
+@api_bp.route('/predict/batch', methods=['POST'])
 def api_predict_batch():
-    """Accept a CSV file upload with columns: battery_size, brand_name, memory_size
-    Returns a CSV file with predictions appended: model_name, lowest_price, highest_price, release_date, screen_size
-    """
+    models_loaded = getattr(current_app, 'models_loaded', False)
+    MOCK_MODE = getattr(current_app, 'MOCK_MODE', False)
     if not models_loaded and not MOCK_MODE:
         return jsonify({"error": "Models not loaded. Please check model files or enable MOCK_MODE."}), 500
-
-    # Accept multipart file upload
     uploaded_file = request.files.get('file')
     if not uploaded_file:
         return jsonify({"error": "No file uploaded. Please upload a CSV file under field 'file'."}), 400
-
     try:
         df = pd.read_csv(uploaded_file)
     except Exception as e:
         return jsonify({"error": f"Failed to read CSV: {e}"}), 400
-
-    # Normalize column names
     cols = {c.lower(): c for c in df.columns}
     required = ['battery_size', 'brand_name', 'memory_size']
     for r in required:
         if r not in cols:
             return jsonify({"error": f"Missing required column: {r}"}), 400
-
-    # Prepare output rows
     output_rows = []
-
     for idx, row in df.iterrows():
         try:
             battery_size = float(row[cols['battery_size']])
             brand_name = str(row[cols['brand_name']])
             memory_size = float(row[cols['memory_size']])
-
-            # basic validation
             if battery_size <= 0 or battery_size > 10000:
                 raise ValueError('battery_size out of range')
             if memory_size <= 0 or memory_size > 512:
                 raise ValueError('memory_size out of range')
-
-            # Encode brand
             try:
-                brand_name_encoded = label_encoder.transform([brand_name.strip()])[0]
+                brand_name_encoded = current_app.label_encoder.transform([brand_name.strip()])[0]
             except Exception:
                 model_name = 'Unknown (brand not recognized)'
                 result = {
                     'model_name': model_name,
                     'brand_name': brand_name.strip(),
                     'lowest_price': None,
-                    'highest_price': None,
+                        'highest_price': None,
                     'release_date': None,
                     'screen_size': None,
                     'error': 'brand not recognized'
                 }
                 output_rows.append({**row.to_dict(), **result})
                 continue
-
             X_input = np.array([[battery_size, brand_name_encoded, memory_size]])
-
             try:
-                model_name_encoded = classifier.predict(X_input)[0]
-                model_name = label_encoder.inverse_transform([model_name_encoded])[0]
+                model_name_encoded = current_app.classifier.predict(X_input)[0]
+                model_name = current_app.label_encoder.inverse_transform([model_name_encoded])[0]
             except Exception:
                 model_name = 'Unknown (classifier error)'
-
-            y_pred = regressor.predict(X_input)
+            y_pred = current_app.regressor.predict(X_input)
             lowest_price = max(0, y_pred[0][0])
             highest_price = max(0, y_pred[0][1])
             release_date = y_pred[0][2]
@@ -599,7 +416,6 @@ def api_predict_batch():
                 release_date = datetime.utcfromtimestamp(release_date).strftime('%Y-%m-%d')
             except Exception:
                 release_date = None
-
             result = {
                 'model_name': model_name,
                 'brand_name': brand_name.strip(),
@@ -609,8 +425,6 @@ def api_predict_batch():
                 'screen_size': round(screen_size, 2),
                 'error': None
             }
-
-            # Save history (anonymous)
             try:
                 prediction = PredictionHistory(
                     user_id=None,
@@ -624,106 +438,73 @@ def api_predict_batch():
                     screen_size=screen_size
                 )
                 db.session.add(prediction)
-                # commit at the end (bulk)
             except Exception as e:
                 print(f"Failed to queue prediction history: {e}")
-
             output_rows.append({**row.to_dict(), **result})
-
         except Exception as e:
             output_rows.append({**row.to_dict(), 'model_name': None, 'lowest_price': None, 'highest_price': None, 'release_date': None, 'screen_size': None, 'error': str(e)})
-
-    # Try to commit any queued history entries
     try:
         db.session.commit()
     except Exception as e:
         print(f"Failed to commit batch prediction history: {e}")
         db.session.rollback()
-
     out_df = pd.DataFrame(output_rows)
-
-    # Prepare CSV for download
     csv_buffer = io.StringIO()
     out_df.to_csv(csv_buffer, index=False)
     csv_bytes = csv_buffer.getvalue().encode('utf-8')
     buf = io.BytesIO(csv_bytes)
     buf.seek(0)
-
     filename = f"predictions_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
     return send_file(buf, mimetype='text/csv', as_attachment=True, download_name=filename)
 
-@app.route("/", methods=["GET", "POST"])
+@api_bp.route('/', methods=['GET', 'POST'])
 def index():
-    if request.method == "POST":
-        if not all([regressor, classifier, label_encoder]):
-            return render_template("index.html", result={"error": "Models not loaded. Please check model files."})
-        
+    if request.method == 'POST':
+        if not getattr(current_app, 'models_loaded', False) and not getattr(current_app, 'MOCK_MODE', False):
+            return render_template('index.html', result={"error": "Models not loaded. Please check model files."})
         try:
-            # Get input values from the form
-            battery_size = float(request.form["battery_size"])
-            brand_name = request.form["brand_name"]
-            memory_size = float(request.form["memory_size"])
-            
-            # Validate input ranges
+            battery_size = float(request.form['battery_size'])
+            brand_name = request.form['brand_name']
+            memory_size = float(request.form['memory_size'])
             if battery_size <= 0 or battery_size > 10000:
-                return render_template("index.html", result={"error": "Battery size must be between 1 and 10000 mAh."})
+                return render_template('index.html', result={"error": "Battery size must be between 1 and 10000 mAh."})
             if memory_size <= 0 or memory_size > 512:
-                return render_template("index.html", result={"error": "Memory size must be between 1 and 512 GB."})
+                return render_template('index.html', result={"error": "Memory size must be between 1 and 512 GB."})
             if not brand_name or len(brand_name.strip()) == 0:
-                return render_template("index.html", result={"error": "Brand name is required."})
-
-            # Encode brand_name
+                return render_template('index.html', result={"error": "Brand name is required."})
             try:
-                brand_name_encoded = label_encoder.transform([brand_name.strip()])[0]
-            except ValueError:
-                return render_template("index.html", result={"error": "Brand name not recognized! Try: Samsung, Apple, Xiaomi, OnePlus, etc."})
-
-            # Create feature array for prediction
+                brand_name_encoded = current_app.label_encoder.transform([brand_name.strip()])[0]
+            except Exception:
+                return render_template('index.html', result={"error": "Brand name not recognized! Try: Samsung, Apple, Xiaomi, OnePlus, etc."})
             X_input = np.array([[battery_size, brand_name_encoded, memory_size]])
-
-            # Predict the model name
             try:
-                model_name_encoded = classifier.predict(X_input)[0]
-                model_name = label_encoder.inverse_transform([model_name_encoded])[0]
+                model_name_encoded = current_app.classifier.predict(X_input)[0]
+                model_name = current_app.label_encoder.inverse_transform([model_name_encoded])[0]
             except Exception as e:
                 print(f"Classifier error: {e}")
                 model_name = "Unknown (unseen in training data)"
-
-            # Predict other details (price, release date, screen size)
             try:
-                y_pred = regressor.predict(X_input)
-                lowest_price = max(0, y_pred[0][0])  # Ensure non-negative
-                highest_price = max(0, y_pred[0][1])  # Ensure non-negative
+                y_pred = current_app.regressor.predict(X_input)
+                lowest_price = max(0, y_pred[0][0])
+                highest_price = max(0, y_pred[0][1])
                 release_date = y_pred[0][2]
-                screen_size = max(1, min(10, y_pred[0][3]))  # Reasonable screen size range
-
-                # Convert release date from Unix timestamp to a readable date format
+                screen_size = max(1, min(10, y_pred[0][3]))
                 try:
                     release_date = datetime.utcfromtimestamp(release_date).strftime('%Y-%m-%d')
                 except (ValueError, OSError):
-                    release_date = datetime.now().strftime('%Y-%m-%d')  # Fallback to current date
-
-                # Prepare results
+                    release_date = datetime.now().strftime('%Y-%m-%d')
                 result = {
-                    "model_name": model_name,
-                    "brand_name": brand_name.strip(),  # Include brand name for frontend
-                    "lowest_price": round(lowest_price, 2),
-                    "highest_price": round(highest_price, 2),
-                    "release_date": release_date,
-                    "screen_size": round(screen_size, 2)
+                    'model_name': model_name,
+                    'brand_name': brand_name.strip(),
+                    'lowest_price': round(lowest_price, 2),
+                    'highest_price': round(highest_price, 2),
+                    'release_date': release_date,
+                    'screen_size': round(screen_size, 2)
                 }
-
-                # Return results to the template
-                return render_template("index.html", result=result)
+                return render_template('index.html', result=result)
             except Exception as e:
                 print(f"Regressor error: {e}")
-                return render_template("index.html", result={"error": "Prediction failed. Please try again."})
-                
+                return render_template('index.html', result={"error": "Prediction failed. Please try again."})
         except (ValueError, TypeError, KeyError):
-            return render_template("index.html", result={"error": "Invalid input format."})
-
-    return render_template("index.html")
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
+            return render_template('index.html', result={"error": "Invalid input format."})
+    return render_template('index.html')
