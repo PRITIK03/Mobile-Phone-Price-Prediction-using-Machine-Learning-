@@ -27,6 +27,7 @@ This project is a full-stack web application that predicts the price range of mo
 ├── models/               # Saved ML models (regressor.pkl, classifier.pkl, label_encoder.pkl)
 ├── templates/
 │   └── index.html        # (Legacy) Flask template
+├── predict_utils.py      # Prediction helpers: caching, mock predictions
 ├── frontend/             # (Legacy/minimal) React app
 ├── react/
 │   └── frontend/         # Main React app (modern UI)
@@ -104,6 +105,15 @@ Batch prediction example (uses sample CSV at `examples/phones_sample.csv`):
 # start the server first
 curl -F "file=@examples/phones_sample.csv" http://127.0.0.1:5000/api/predict/batch -o predictions.csv
 ```
+
+## Code modularization
+
+I refactored some helper logic into `predict_utils.py` to keep `app.py` focused on the Flask app and routing. Highlights:
+
+- `predict_utils.py`: contains caching helpers (`get_cache_key`, `get_cached_prediction`, `cache_prediction`), a lightweight `mock_predict_single()` for development without model files, and the in-memory `prediction_cache`.
+- `app.py`: remains the application entrypoint and defines DB models, routes, authentication, and uses helpers from `predict_utils.py`.
+
+This separation makes it easier to test prediction logic independently and to replace the cache with Redis or another store later.
 
 ---
 
