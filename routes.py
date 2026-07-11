@@ -459,23 +459,24 @@ def api_predict_batch():
 
 @api_bp.route('/', methods=['GET', 'POST'])
 def index():
+    current_year = datetime.now().year
     if request.method == 'POST':
         if not getattr(current_app, 'models_loaded', False) and not getattr(current_app, 'MOCK_MODE', False):
-            return render_template('index.html', result={"error": "Models not loaded. Please check model files."})
+            return render_template('index.html', result={"error": "Models not loaded. Please check model files."}, current_year=current_year)
         try:
             battery_size = float(request.form['battery_size'])
             brand_name = request.form['brand_name']
             memory_size = float(request.form['memory_size'])
             if battery_size <= 0 or battery_size > 10000:
-                return render_template('index.html', result={"error": "Battery size must be between 1 and 10000 mAh."})
+                return render_template('index.html', result={"error": "Battery size must be between 1 and 10000 mAh."}, current_year=current_year)
             if memory_size <= 0 or memory_size > 512:
-                return render_template('index.html', result={"error": "Memory size must be between 1 and 512 GB."})
+                return render_template('index.html', result={"error": "Memory size must be between 1 and 512 GB."}, current_year=current_year)
             if not brand_name or len(brand_name.strip()) == 0:
-                return render_template('index.html', result={"error": "Brand name is required."})
+                return render_template('index.html', result={"error": "Brand name is required."}, current_year=current_year)
             try:
                 brand_name_encoded = current_app.label_encoder.transform([brand_name.strip()])[0]
             except Exception:
-                return render_template('index.html', result={"error": "Brand name not recognized! Try: Samsung, Apple, Xiaomi, OnePlus, etc."})
+                return render_template('index.html', result={"error": "Brand name not recognized! Try: Samsung, Apple, Xiaomi, OnePlus, etc."}, current_year=current_year)
             X_input = np.array([[battery_size, brand_name_encoded, memory_size]])
             try:
                 model_name_encoded = current_app.classifier.predict(X_input)[0]
@@ -501,10 +502,10 @@ def index():
                     'release_date': release_date,
                     'screen_size': round(screen_size, 2)
                 }
-                return render_template('index.html', result=result)
+                return render_template('index.html', result=result, current_year=current_year)
             except Exception as e:
                 print(f"Regressor error: {e}")
-                return render_template('index.html', result={"error": "Prediction failed. Please try again."})
+                return render_template('index.html', result={"error": "Prediction failed. Please try again."}, current_year=current_year)
         except (ValueError, TypeError, KeyError):
-            return render_template('index.html', result={"error": "Invalid input format."})
-    return render_template('index.html')
+            return render_template('index.html', result={"error": "Invalid input format."}, current_year=current_year)
+    return render_template('index.html', current_year=current_year)
