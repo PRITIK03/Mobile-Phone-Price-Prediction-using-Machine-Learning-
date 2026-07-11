@@ -23,7 +23,11 @@ This project is a full-stack web application that predicts the price range of mo
 ├── app_factory.py        # App factory, model loading, extension wiring
 ├── extensions.py         # Shared Flask extension instances
 ├── models.py             # Database models
-├── routes.py             # All API and page routes
+├── auth_routes.py        # Authentication endpoints
+├── prediction_routes.py  # Prediction, compare, and batch endpoints
+├── utility_routes.py     # Health, history, and stats endpoints
+├── web_routes.py         # Homepage route
+├── routes.py             # Compatibility shim for blueprint imports
 ├── predict_utils.py      # Prediction helpers, cache, Redis fallback, mock mode
 ├── main.py               # Model training and serialization
 ├── phones_data.csv       # Dataset for training
@@ -115,7 +119,11 @@ The backend is split into focused modules:
 - `app_factory.py`: builds the Flask app, loads models, and registers blueprints.
 - `extensions.py`: shared Flask extension instances.
 - `models.py`: database models only.
-- `routes.py`: all routes and page rendering.
+- `auth_routes.py`: registration and login.
+- `prediction_routes.py`: prediction, comparison, and batch upload.
+- `utility_routes.py`: health check, history, stats, and delete endpoints.
+- `web_routes.py`: homepage rendering.
+- `routes.py`: compatibility shim that re-exports the blueprints.
 - `predict_utils.py`: cache helpers, Redis fallback, and mock prediction logic.
 
 This separation makes the code easier to maintain, test, and extend.
@@ -147,7 +155,6 @@ This separation makes the code easier to maintain, test, and extend.
 ## Possible Improvements
 
 - Add more charts and trend summaries to the dashboard
-- Extract auth routes into a dedicated blueprint
 - Add automated tests for API routes and UI rendering
 - Dockerize the application for deployment
 - Add feature importance or SHAP explanations
