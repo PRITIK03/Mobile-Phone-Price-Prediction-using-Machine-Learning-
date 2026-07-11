@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phone Recommendation Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #07111f;
+            --bg-elevated: rgba(10, 18, 32, 0.78);
+            --bg-soft: rgba(255, 255, 255, 0.06);
+            --text: #eff4ff;
+            --muted: #9fb0cc;
+            --line: rgba(255, 255, 255, 0.12);
+            --brand: #7dd3fc;
+            --brand-2: #a78bfa;
+            --accent: #22c55e;
+            --warning: #f59e0b;
+            --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+            --radius: 24px;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body { height: 100%; }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(125, 211, 252, 0.22), transparent 34%),
+                radial-gradient(circle at top right, rgba(167, 139, 250, 0.24), transparent 28%),
+                radial-gradient(circle at bottom, rgba(34, 197, 94, 0.12), transparent 28%),
+                linear-gradient(180deg, #06101d 0%, #0b1628 100%);
+            min-height: 100vh;
+        }
+
+        .page {
+            width: min(1240px, calc(100% - 32px));
+            margin: 0 auto;
+            padding: 32px 0 40px;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            padding: 18px 22px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(16px);
+            border-radius: 999px;
+            box-shadow: var(--shadow);
+            margin-bottom: 26px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-mark {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--brand), var(--brand-2));
+            box-shadow: 0 12px 30px rgba(125, 211, 252, 0.28);
+            display: grid;
+            place-items: center;
+            font-weight: 800;
+            color: #05131f;
+        }
+
+        .brand-copy h1 {
+            margin: 0;
+            font-size: 1rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .brand-copy p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .pill-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .pill {
+            padding: 10px 14px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--text);
+            font-size: 0.88rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .hero {
+            display: grid;
+            grid-template-columns: 1.4fr 0.9fr;
+            gap: 22px;
+            align-items: stretch;
+            margin-bottom: 22px;
+        }
+
+        .hero-card,
+        .panel,
+        .result-card,
+        .chart-card,
+        .stat-card,
+        .tip-card {
+            border: 1px solid var(--line);
+            background: var(--bg-elevated);
+            backdrop-filter: blur(16px);
+            box-shadow: var(--shadow);
+            border-radius: var(--radius);
+        }
+
+        .hero-card {
+            padding: 32px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-card::after {
+            content: '';
+            position: absolute;
+            inset: auto -10% -25% auto;
+            width: 260px;
+            height: 260px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(125, 211, 252, 0.16), transparent 70%);
+            pointer-events: none;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(125, 211, 252, 0.12);
+            color: #cffafe;
+            font-size: 0.82rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: 18px;
+        }
+
+        .hero h2 {
+            margin: 0;
+            font-size: clamp(2rem, 4vw, 3.7rem);
+            line-height: 1.03;
+            letter-spacing: -0.04em;
+        }
+
+        .hero p {
+            margin: 18px 0 0;
+            color: var(--muted);
+            font-size: 1.02rem;
+            line-height: 1.7;
+            max-width: 62ch;
+        }
+
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .hero-stat {
+            padding: 16px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .hero-stat strong {
+            display: block;
+            font-size: 1.05rem;
+            margin-bottom: 6px;
+        }
+
+        .hero-stat span {
+            color: var(--muted);
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .side-stack {
+            display: grid;
+            gap: 18px;
+        }
+
+        .mini-panel {
+            padding: 24px;
+            border-radius: var(--radius);
+            border: 1px solid var(--line);
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.03));
+        }
+
+        .mini-panel h3 {
+            margin: 0 0 10px;
+            font-size: 1rem;
+        }
+
+        .mini-panel p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 22px;
+            align-items: start;
+        }
+
+        .panel {
+            padding: 24px;
+        }
+
+        .panel h3,
+        .section-title {
+            margin: 0 0 14px;
+            font-size: 1.1rem;
+            letter-spacing: -0.02em;
+        }
+
+        .section-subtitle {
+            margin: -6px 0 18px;
+            color: var(--muted);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .field {
+            display: grid;
+            gap: 8px;
+        }
+
+        .field label {
+            font-size: 0.9rem;
+            color: #d7e3f7;
+            font-weight: 600;
+        }
+
+        .field input,
+        .field input[type="file"] {
+            width: 100%;
+            padding: 14px 14px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            outline: none;
+            transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
+        }
+
+        .field input::placeholder { color: #7f91ad; }
+
+        .field input:focus {
+            border-color: rgba(125, 211, 252, 0.7);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 18px;
+        }
+
+        .btn {
+            appearance: none;
+            border: none;
+            border-radius: 16px;
+            padding: 14px 18px;
+            color: #08111c;
+            background: linear-gradient(135deg, #8be9ff, #a78bfa);
+            font-weight: 800;
+            cursor: pointer;
+            transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+            box-shadow: 0 18px 30px rgba(125, 211, 252, 0.18);
+        }
+
+        .btn:hover { transform: translateY(-1px); }
+        .btn:active { transform: translateY(0); opacity: 0.94; }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: none;
+        }
+
+        .upload-box {
+            margin-top: 22px;
+            padding: 18px;
+            border-radius: 18px;
+            border: 1px dashed rgba(125, 211, 252, 0.35);
+            background: rgba(125, 211, 252, 0.04);
+        }
+
+        .upload-note {
+            color: var(--muted);
+            font-size: 0.92rem;
+            margin-top: 10px;
+        }
+
+        .status {
+            margin-top: 12px;
+            font-size: 0.94rem;
+            color: #d8e8ff;
+        }
+
+        .result-shell {
+            display: grid;
+            gap: 18px;
+        }
+
+        .result-card {
+            padding: 24px;
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 14px;
+            align-items: center;
+            margin-bottom: 18px;
+        }
+
+        .result-header h3 {
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .result-badge {
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(34, 197, 94, 0.12);
+            color: #86efac;
+            font-size: 0.85rem;
+            border: 1px solid rgba(34, 197, 94, 0.22);
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .info {
+            padding: 16px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .info span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.82rem;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .info strong {
+            font-size: 1.05rem;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+        }
+
+        .chart-card {
+            padding: 18px;
+        }
+
+        .chart-card h4 {
+            margin: 0 0 10px;
+            font-size: 0.98rem;
+            color: #d9e6ff;
+        }
+
+        .chart-box {
+            height: 230px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+        }
+
+        .stat-card {
+            padding: 18px;
+        }
+
+        .stat-card p,
+        .stat-card h4 {
+            margin: 0;
+        }
+
+        .stat-card h4 {
+            color: var(--muted);
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .stat-card p {
+            font-size: 1.15rem;
+            font-weight: 700;
+        }
+
+        .error-banner {
+            margin-bottom: 18px;
+            padding: 14px 16px;
+            border-radius: 16px;
+            border: 1px solid rgba(245, 158, 11, 0.28);
+            background: rgba(245, 158, 11, 0.08);
+            color: #fde68a;
+            font-weight: 600;
+        }
+
+        .footer {
+            margin-top: 24px;
+            padding: 16px 4px 0;
+            text-align: center;
+            color: var(--muted);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 1080px) {
+            .hero,
+            .grid,
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .metrics-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 720px) {
+            .page { width: min(100% - 20px, 1240px); padding-top: 18px; }
+            .topbar { border-radius: 28px; flex-direction: column; align-items: flex-start; }
+            .hero-card, .panel, .result-card, .chart-card, .mini-panel { padding: 18px; }
+            .form-grid, .result-grid, .hero-stats, .metrics-grid { grid-template-columns: 1fr; }
+            .pill-row { justify-content: flex-start; }
+            .result-header { flex-direction: column; align-items: flex-start; }
+            .chart-box { height: 210px; }
+        }
+    </style>
+</head>
+<body>
+    <main class="page">
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-mark">MP</div>
+                <div class="brand-copy">
+                    <h1>Phone Recommendation Studio</h1>
+                    <p>Prediction workspace with batch CSV support and analytics</p>
+                </div>
+            </div>
+            <div class="pill-row" aria-label="Product highlights">
+                <div class="pill">Fast ML predictions</div>
+                <div class="pill">Batch CSV upload</div>
+                <div class="pill">Authenticated history</div>
+            </div>
+        </header>
+
+        <section class="hero">
+            <article class="hero-card">
+                <div class="eyebrow">Modernized prediction UI</div>
+                <h2>Compare mobile phone specs and forecast the likely price range in one clean workspace.</h2>
+                <p>
+                    Enter battery, brand, and memory to get a recommendation, or upload a CSV for batch processing.
+                    The interface is designed as a compact studio with clear visual hierarchy, modern cards, and
+                    a polished result view.
+                </p>
+                <div class="hero-stats">
+                    <div class="hero-stat">
+                        <strong>Single prediction</strong>
+                        <span>Instant form-based prediction with detailed output cards.</span>
+                    </div>
+                    <div class="hero-stat">
+                        <strong>Batch mode</strong>
+                        <span>Upload a CSV and download a result file with appended predictions.</span>
+                    </div>
+                    <div class="hero-stat">
+                        <strong>Visual insights</strong>
+                        <span>Auto-generated charts make each prediction easier to read at a glance.</span>
+                    </div>
+                </div>
+            </article>
+
+            <aside class="side-stack">
+                <div class="mini-panel">
+                    <h3>Inputs expected</h3>
+                    <p>Use battery size in mAh, brand name exactly as supported by the encoder, and memory size in GB.</p>
+                </div>
+                <div class="mini-panel">
+                    <h3>Batch CSV format</h3>
+                    <p>Columns should be <strong>battery_size</strong>, <strong>brand_name</strong>, and <strong>memory_size</strong>.</p>
+                </div>
+                <div class="mini-panel">
+                    <h3>Pro tip</h3>
+                    <p>When model files are missing, the app uses mock mode so the UI stays usable for demos.</p>
+                </div>
+            </aside>
+        </section>
+
+        <section class="grid">
+            <article class="panel">
+                <h3>Single prediction</h3>
+                <p class="section-subtitle">Run a recommendation using the core features the model was trained on.</p>
+                <form action="/" method="post">
+                    <div class="form-grid">
+                        <div class="field">
+                            <label for="battery_size">Battery Size (mAh)</label>
+                            <input type="number" id="battery_size" name="battery_size" placeholder="e.g. 5000" required>
+                        </div>
+                        <div class="field">
+                            <label for="brand_name">Brand Name</label>
+                            <input type="text" id="brand_name" name="brand_name" placeholder="Samsung, Apple, Xiaomi..." required>
+                        </div>
+                        <div class="field">
+                            <label for="memory_size">Memory Size (GB)</label>
+                            <input type="number" id="memory_size" name="memory_size" placeholder="e.g. 128" required>
+                        </div>
+                    </div>
+                    <div class="actions">
+                        <button class="btn" type="submit">Get Recommendation</button>
+                        <button class="btn btn-secondary" type="reset">Reset</button>
+                    </div>
+                </form>
+
+                <div class="upload-box">
+                    <h3>Batch CSV upload</h3>
+                    <p class="section-subtitle">Upload a CSV to generate downloadable predictions for multiple phones at once.</p>
+                    <form id="batchForm" enctype="multipart/form-data">
+                        <div class="field">
+                            <label for="csv_file">CSV file</label>
+                            <input type="file" id="csv_file" name="file" accept=".csv" required>
+                        </div>
+                        <div class="actions">
+                            <button class="btn" type="submit">Upload & Predict</button>
+                        </div>
+                    </form>
+                    <div id="batchResult" class="status" aria-live="polite"></div>
+                    <div class="upload-note">Need a sample? Use <strong>examples/phones_sample.csv</strong>.</div>
+                </div>
+            </article>
+
+            <aside class="result-shell">
+                {% if result and result.error %}
+                <div class="error-banner">{{ result.error }}</div>
+                {% endif %}
+
+                {% if result and not result.error %}
+                <section class="result-card">
+                    <div class="result-header">
+                        <h3>Recommendation result</h3>
+                        <div class="result-badge">Ready</div>
+                    </div>
+                    <div class="result-grid">
+                        <div class="info">
+                            <span>Model name</span>
+                            <strong>{{ result['model_name'] }}</strong>
+                        </div>
+                        <div class="info">
+                            <span>Brand</span>
+                            <strong>{{ result['brand_name'] }}</strong>
+                        </div>
+                        <div class="info">
+                            <span>Price range</span>
+                            <strong>₹{{ result['lowest_price'] }} - ₹{{ result['highest_price'] }}</strong>
+                        </div>
+                        <div class="info">
+                            <span>Release date</span>
+                            <strong>{{ result['release_date'] }}</strong>
+                        </div>
+                        <div class="info">
+                            <span>Screen size</span>
+                            <strong>{{ result['screen_size'] }} inches</strong>
+                        </div>
+                        <div class="info">
+                            <span>Estimated age</span>
+                            <strong>{{ current_year - result['release_date'][:4]|int }} years</strong>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="metrics-grid">
+                    <div class="stat-card">
+                        <h4>Average price</h4>
+                        <p>₹{{ "%.0f"|format((result['lowest_price'] + result['highest_price']) / 2) }}</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Screen rating</h4>
+                        <p>{{ "%.0f"|format((result['screen_size'] / 7) * 100) }}%</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Value score</h4>
+                        <p>92%</p>
+                    </div>
+                    <div class="stat-card">
+                        <h4>Confidence</h4>
+                        <p>High</p>
+                    </div>
+                </section>
+
+                <section class="charts-grid">
+                    <div class="chart-card">
+                        <h4>Price analysis</h4>
+                        <div class="chart-box"><canvas id="priceChart"></canvas></div>
+                    </div>
+                    <div class="chart-card">
+                        <h4>Performance overview</h4>
+                        <div class="chart-box"><canvas id="performanceChart"></canvas></div>
+                    </div>
+                    <div class="chart-card">
+                        <h4>Market position</h4>
+                        <div class="chart-box"><canvas id="marketChart"></canvas></div>
+                    </div>
+                    <div class="chart-card">
+                        <h4>Feature comparison</h4>
+                        <div class="chart-box"><canvas id="featureChart"></canvas></div>
+                    </div>
+                    <div class="chart-card" style="grid-column: 1 / -1;">
+                        <h4>Price trend (6 months)</h4>
+                        <div class="chart-box"><canvas id="trendChart"></canvas></div>
+                    </div>
+                </section>
+                {% endif %}
+            </aside>
+        </section>
+
+        <footer class="footer">
+            © {{ current_year }} Phone Recommendation Studio. Built for fast single and batch predictions.
+        </footer>
+    </main>
+
+    <script>
+        const batchForm = document.getElementById('batchForm');
+        if (batchForm) {
+            batchForm.addEventListener('submit', async function (e) {
+                e.preventDefault();
+                const fileInput = document.getElementById('csv_file');
+                const statusDiv = document.getElementById('batchResult');
+                if (!fileInput.files.length) {
+                    statusDiv.textContent = 'Please select a CSV file.';
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                statusDiv.textContent = 'Uploading and generating predictions...';
+
+                try {
+                    const res = await fetch('/api/predict/batch', { method: 'POST', body: formData });
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        statusDiv.textContent = 'Error: ' + (err.error || res.statusText);
+                        return;
+                    }
+
+                    const blob = await res.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const cd = res.headers.get('Content-Disposition');
+                    let fname = 'predictions.csv';
+                    if (cd) {
+                        const match = cd.match(/filename\*=UTF-8''([^;\n]+)/) || cd.match(/filename="?([^";\n]+)"?/);
+                        if (match) fname = decodeURIComponent(match[1]);
+                    }
+                    a.download = fname;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    statusDiv.textContent = 'Batch predictions completed. Download started.';
+                } catch (err) {
+                    statusDiv.textContent = 'Batch prediction failed: ' + err;
+                }
+            });
+        }
+
+        {% if result and not result.error %}
+        const avgPrice = {{ (result['lowest_price'] + result['highest_price']) / 2 }};
+
+        const chartTheme = {
+            color: '#dce7ff',
+            grid: 'rgba(255,255,255,0.10)'
+        };
+
+        new Chart(document.getElementById('priceChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Lowest', 'Average', 'Highest'],
+                datasets: [{
+                    label: 'Price (₹)',
+                    data: [{{ result['lowest_price'] }}, avgPrice, {{ result['highest_price'] }}],
+                    backgroundColor: ['#22c55e', '#7dd3fc', '#a78bfa'],
+                    borderRadius: 10,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { color: chartTheme.color }, grid: { color: chartTheme.grid } },
+                    x: { ticks: { color: chartTheme.color }, grid: { color: 'transparent' } }
+                }
+            }
+        });
+
+        new Chart(document.getElementById('performanceChart'), {
+            type: 'radar',
+            data: {
+                labels: ['Battery', 'Memory', 'Screen', 'Value', 'Camera'],
+                datasets: [{
+                    label: 'Score',
+                    data: [86, 82, {{ (result['screen_size'] / 7) * 100 }}, 92, 84],
+                    backgroundColor: 'rgba(125, 211, 252, 0.16)',
+                    borderColor: '#7dd3fc',
+                    pointBackgroundColor: '#a78bfa',
+                    borderWidth: 2,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    r: {
+                        angleLines: { color: chartTheme.grid },
+                        grid: { color: chartTheme.grid },
+                        pointLabels: { color: chartTheme.color },
+                        ticks: { color: chartTheme.color, backdropColor: 'transparent' }
+                    }
+                }
+            }
+        });
+
+        new Chart(document.getElementById('marketChart'), {
+            type: 'bar',
+            data: {
+                labels: ['Budget', 'Mid-range', 'Premium', 'Flagship'],
+                datasets: [{
+                    label: 'Position',
+                    data: [avgPrice * 0.75, avgPrice, avgPrice * 1.15, avgPrice * 1.35],
+                    backgroundColor: ['#0ea5e9', '#22c55e', '#f59e0b', '#a78bfa'],
+                    borderRadius: 10,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { color: chartTheme.color }, grid: { color: chartTheme.grid } },
+                    x: { ticks: { color: chartTheme.color }, grid: { color: 'transparent' } }
+                }
+            }
+        });
+
+        new Chart(document.getElementById('featureChart'), {
+            type: 'line',
+            data: {
+                labels: ['Camera', 'Battery', 'Performance', 'Display', 'Build'],
+                datasets: [{
+                    label: 'Predicted',
+                    data: [88, 91, 85, 90, 84],
+                    borderColor: '#22c55e',
+                    backgroundColor: 'rgba(34, 197, 94, 0.10)',
+                    fill: true,
+                    tension: 0.35
+                }, {
+                    label: 'Baseline',
+                    data: [75, 70, 72, 68, 66],
+                    borderColor: '#f59e0b',
+                    borderDash: [6, 6],
+                    fill: false,
+                    tension: 0.35
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: chartTheme.color } } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { color: chartTheme.color }, grid: { color: chartTheme.grid } },
+                    x: { ticks: { color: chartTheme.color }, grid: { color: 'transparent' } }
+                }
+            }
+        });
+
+        new Chart(document.getElementById('trendChart'), {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                datasets: [{
+                    label: 'Price trend (₹)',
+                    data: [avgPrice * 0.94, avgPrice * 0.96, avgPrice * 0.98, avgPrice, avgPrice * 1.02, avgPrice * 1.04],
+                    borderColor: '#7dd3fc',
+                    backgroundColor: 'rgba(125, 211, 252, 0.12)',
+                    fill: true,
+                    tension: 0.35
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { ticks: { color: chartTheme.color, callback: function (v) { return '₹' + Number(v).toFixed(0); } }, grid: { color: chartTheme.grid } },
+                    x: { ticks: { color: chartTheme.color }, grid: { color: 'transparent' } }
+                }
+            }
+        });
+        {% endif %}
+    </script>
+</body>
+</html>

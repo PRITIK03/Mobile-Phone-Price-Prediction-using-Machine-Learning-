@@ -3,6 +3,7 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 from extensions import db, bcrypt, jwt
 from models import User, PredictionHistory
 from predict_utils import get_cache_key, get_cached_prediction, cache_prediction, mock_predict_single, prediction_cache
+from sqlalchemy import text
 import numpy as np
 import pandas as pd
 import io
@@ -153,7 +154,7 @@ def api_predict():
 def health_check():
     db_status = True
     try:
-        db.engine.execute("SELECT 1")
+        db.session.execute(text("SELECT 1"))
     except Exception:
         db_status = False
     cache_size = len(prediction_cache)
@@ -298,35 +299,8 @@ def compare_phones():
                     'cached': True
                 }
             else:
-                try:
-                    brand_name_encoded = label_encoder.transform([brand_name.strip()])[0]
-                except ValueError:
-                    return jsonify({"error": f"Brand name '{brand_name}' not recognized for phone {phone.get('name', 'unknown')}."}), 400
-                X_input = np.array([[battery_size, brand_name_encoded, memory_size]])
-                try:
-                    model_name_encoded = classifier.predict(X_input)[0]
-                    model_name = label_encoder.inverse_transform([model_name_encoded])[0]
-                except Exception as e:
-                    print(f"Classifier error: {e}")
-                    model_name = "Unknown (unseen in training data)"
-                try:
-                    y_pred = regressor.predict(X_input)
-                    lowest_price = max(0, y_pred[0][0])
-                    highest_price = max(0, y_pred[0][1])
-                    release_date = y_pred[0][2]
-                    screen_size = max(1, min(10, y_pred[0][3]))
-                    try:
-                        release_date = datetime.utcfromtimestamp(release_date).strftime('%Y-%m-%d')
-                    except (ValueError, OSError):
-                        release_date = datetime.now().strftime('%Y-%m-%d')
-                    result = {
-                        "model_name": model_name,
-                        "brand_name": brand_name.strip(),
-                        "lowest_price": round(lowest_price, 2),
-                        "highest_price": round(highest_price, 2),
-                        "release_date": release_date,
-                        "screen_size": round(screen_size, 2)
-                    }
+                if not models_loaded and MOCK_MODE:
+                    result = mock_predict_single(battery_size, brand_name, memory_size)
                     cache_prediction(cache_key, result)
                     comparison = {
                         'name': phone.get('name', f'Phone {len(comparisons) + 1}'),
@@ -335,9 +309,47 @@ def compare_phones():
                         'prediction': result,
                         'cached': False
                     }
-                except Exception as e:
-                    print(f"Regressor error: {e}")
-                    return jsonify({"error": f"Prediction failed for phone {phone.get('name', 'unknown')}."}), 500
+                else:
+                    try:
+                        brand_name_encoded = label_encoder.transform([brand_name.strip()])[0]
+                    except ValueError:
+                        return jsonify({"error": f"Brand name '{brand_name}' not recognized for phone {phone.get('name', 'unknown')}."}), 400
+                    X_input = np.array([[battery_size, brand_name_encoded, memory_size]])
+                    try:
+                        model_name_encoded = classifier.predict(X_input)[0]
+                        model_name = label_encoder.inverse_transform([model_name_encoded])[0]
+                    except Exception as e:
+                        print(f"Classifier error: {e}")
+                        model_name = "Unknown (unseen in training data)"
+                    try:
+                        y_pred = regressor.predict(X_input)
+                        lowest_price = max(0, y_pred[0][0])
+                        highest_price = max(0, y_pred[0][1])
+                        release_date = y_pred[0][2]
+                        screen_size = max(1, min(10, y_pred[0][3]))
+                        try:
+                            release_date = datetime.utcfromtimestamp(release_date).strftime('%Y-%m-%d')
+                        except (ValueError, OSError):
+                            release_date = datetime.now().strftime('%Y-%m-%d')
+                        result = {
+                            "model_name": model_name,
+                            "brand_name": brand_name.strip(),
+                            "lowest_price": round(lowest_price, 2),
+                            "highest_price": round(highest_price, 2),
+                            "release_date": release_date,
+                            "screen_size": round(screen_size, 2)
+                        }
+                        cache_prediction(cache_key, result)
+                        comparison = {
+                            'name': phone.get('name', f'Phone {len(comparisons) + 1}'),
+                            'battery_size': battery_size,
+                            'memory_size': memory_size,
+                            'prediction': result,
+                            'cached': False
+                        }
+                    except Exception as e:
+                        print(f"Regressor error: {e}")
+                        return jsonify({"error": f"Prediction failed for phone {phone.get('name', 'unknown')}."}), 500
             comparisons.append(comparison)
         except (KeyError, ValueError, TypeError) as e:
             return jsonify({"error": f"Invalid input format for phone {phone.get('name', 'unknown')}: {str(e)}"}), 400
@@ -386,45 +398,49 @@ def api_predict_batch():
                 raise ValueError('battery_size out of range')
             if memory_size <= 0 or memory_size > 512:
                 raise ValueError('memory_size out of range')
-            try:
-                brand_name_encoded = current_app.label_encoder.transform([brand_name.strip()])[0]
-            except Exception:
-                model_name = 'Unknown (brand not recognized)'
+            if not models_loaded and MOCK_MODE:
+                result = mock_predict_single(battery_size, brand_name, memory_size)
+                result['error'] = None
+            else:
+                try:
+                    brand_name_encoded = current_app.label_encoder.transform([brand_name.strip()])[0]
+                except Exception:
+                    model_name = 'Unknown (brand not recognized)'
+                    result = {
+                        'model_name': model_name,
+                        'brand_name': brand_name.strip(),
+                        'lowest_price': None,
+                        'highest_price': None,
+                        'release_date': None,
+                        'screen_size': None,
+                        'error': 'brand not recognized'
+                    }
+                    output_rows.append({**row.to_dict(), **result})
+                    continue
+                X_input = np.array([[battery_size, brand_name_encoded, memory_size]])
+                try:
+                    model_name_encoded = current_app.classifier.predict(X_input)[0]
+                    model_name = current_app.label_encoder.inverse_transform([model_name_encoded])[0]
+                except Exception:
+                    model_name = 'Unknown (classifier error)'
+                y_pred = current_app.regressor.predict(X_input)
+                lowest_price = max(0, y_pred[0][0])
+                highest_price = max(0, y_pred[0][1])
+                release_date = y_pred[0][2]
+                screen_size = max(1, min(10, y_pred[0][3]))
+                try:
+                    release_date = datetime.utcfromtimestamp(release_date).strftime('%Y-%m-%d')
+                except Exception:
+                    release_date = None
                 result = {
                     'model_name': model_name,
                     'brand_name': brand_name.strip(),
-                    'lowest_price': None,
-                        'highest_price': None,
-                    'release_date': None,
-                    'screen_size': None,
-                    'error': 'brand not recognized'
+                    'lowest_price': round(lowest_price, 2),
+                    'highest_price': round(highest_price, 2),
+                    'release_date': release_date,
+                    'screen_size': round(screen_size, 2),
+                    'error': None
                 }
-                output_rows.append({**row.to_dict(), **result})
-                continue
-            X_input = np.array([[battery_size, brand_name_encoded, memory_size]])
-            try:
-                model_name_encoded = current_app.classifier.predict(X_input)[0]
-                model_name = current_app.label_encoder.inverse_transform([model_name_encoded])[0]
-            except Exception:
-                model_name = 'Unknown (classifier error)'
-            y_pred = current_app.regressor.predict(X_input)
-            lowest_price = max(0, y_pred[0][0])
-            highest_price = max(0, y_pred[0][1])
-            release_date = y_pred[0][2]
-            screen_size = max(1, min(10, y_pred[0][3]))
-            try:
-                release_date = datetime.utcfromtimestamp(release_date).strftime('%Y-%m-%d')
-            except Exception:
-                release_date = None
-            result = {
-                'model_name': model_name,
-                'brand_name': brand_name.strip(),
-                'lowest_price': round(lowest_price, 2),
-                'highest_price': round(highest_price, 2),
-                'release_date': release_date,
-                'screen_size': round(screen_size, 2),
-                'error': None
-            }
             try:
                 prediction = PredictionHistory(
                     user_id=None,
@@ -473,6 +489,9 @@ def index():
                 return render_template('index.html', result={"error": "Memory size must be between 1 and 512 GB."}, current_year=current_year)
             if not brand_name or len(brand_name.strip()) == 0:
                 return render_template('index.html', result={"error": "Brand name is required."}, current_year=current_year)
+            if not getattr(current_app, 'models_loaded', False) and getattr(current_app, 'MOCK_MODE', False):
+                result = mock_predict_single(battery_size, brand_name, memory_size)
+                return render_template('index.html', result=result, current_year=current_year)
             try:
                 brand_name_encoded = current_app.label_encoder.transform([brand_name.strip()])[0]
             except Exception:
