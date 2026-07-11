@@ -4,8 +4,9 @@ import os
 import pickle
 
 from extensions import db, bcrypt, jwt, cors
-from models import User, PredictionHistory
-from routes import api_bp
+from auth_routes import auth_bp
+from prediction_routes import predictions_bp
+from utility_routes import utility_bp
 
 
 def load_models():
@@ -80,6 +81,8 @@ def create_app():
     with app.app_context():
         db.create_all()
 
-    app.register_blueprint(api_bp, url_prefix='/api')
+    app.register_blueprint(auth_bp, url_prefix='/api')
+    app.register_blueprint(predictions_bp, url_prefix='/api')
+    app.register_blueprint(utility_bp, url_prefix='/api')
 
     return app
