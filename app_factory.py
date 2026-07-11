@@ -7,6 +7,7 @@ from extensions import db, bcrypt, jwt, cors
 from auth_routes import auth_bp
 from prediction_routes import predictions_bp
 from utility_routes import utility_bp
+from web_routes import web_bp
 
 
 def load_models():
@@ -84,5 +85,6 @@ def create_app():
     app.register_blueprint(auth_bp, url_prefix='/api')
     app.register_blueprint(predictions_bp, url_prefix='/api')
     app.register_blueprint(utility_bp, url_prefix='/api')
+    app.register_blueprint(web_bp)
 
     return app
