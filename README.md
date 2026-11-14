@@ -1,6 +1,6 @@
 # Mobile Phone Price Prediction using Machine Learning
 
-This project is a full-stack web application that predicts the price range of mobile phones using machine learning. The backend is now modularized into focused Flask modules, and the main user experience is a polished dashboard-style UI with single prediction and batch CSV upload support.
+This project is a full-stack web application that predicts the price range of mobile phones using machine learning. The backend is now modularized into focused Flask modules, and the main user experience is a polished dashboard-style UI with single prediction and batch CSV upload support..
 
 ---
 
